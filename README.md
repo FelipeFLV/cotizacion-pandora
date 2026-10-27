@@ -53,6 +53,8 @@ El botón **Evidencias** define qué verá el cliente:
 
 **Modo cliente nuevo** cambia a `General` y, si no había selección, marca todo el banco; si ya había una selección, la conserva.
 
+Si exportas en modo `General` sin ninguna pieza marcada, la matriz avisa y usa la evidencia de cada servicio como respaldo.
+
 Para sumar una pieza al banco general:
 
 1. Copia el archivo a `docs/assets/media/general/`.
@@ -91,7 +93,7 @@ Si el paquete trae un medio inexistente, un esquema inseguro o un slug que ya pe
 2. Se descarga un paquete `pandora-retiro-…json`.
 3. Arrástralo sobre el mismo `.command`.
 
-La URL deja de existir (404), pero la cotización y su historial siguen en la biblioteca local. Retirar es distinto de eliminar.
+La URL deja de existir (404), pero la cotización y su historial siguen en la biblioteca local. Mientras el paquete no se aplique, la biblioteca muestra **Retiro pendiente**; retirar es distinto de eliminar.
 
 ---
 

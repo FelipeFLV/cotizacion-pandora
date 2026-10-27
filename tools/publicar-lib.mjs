@@ -25,8 +25,8 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-function fill(template, token, value) {
-  return template.split(`{{${token}}}`).join(value);
+function fillTokens(template, values) {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => (values[key] == null ? '' : values[key]));
 }
 
 export function clientData(quote, general, generatedAt) {
@@ -43,16 +43,16 @@ export function clientData(quote, general, generatedAt) {
 export function buildClientHtml({ template, pkg, base }) {
   const quote = pkg.quote;
   const date = quote.meta.date || '';
-  let html = template;
-  html = fill(html, 'TITLE', escapeHtml(`Propuesta · ${quote.meta.client || 'Pandora Marketing'}`));
-  html = fill(html, 'DESCRIPTION', escapeHtml('Propuesta de Pandora Marketing: alcance, evidencia e inversión.'));
-  html = fill(html, 'QUOTE_ID', escapeHtml(quote.id || pkg.slug));
-  html = fill(html, 'GENERATED_AT', escapeHtml(pkg.generatedAt || ''));
-  html = fill(html, 'DATE_ISO', escapeHtml(date));
-  html = fill(html, 'DATE_LABEL', escapeHtml(P.dateLabel(date)));
-  html = fill(html, 'BASE', base);
-  html = fill(html, 'DATA', clientData(quote, pkg.general, pkg.generatedAt));
-  return html;
+  return fillTokens(template, {
+    TITLE: escapeHtml(`Propuesta · ${quote.meta.client || 'Pandora Marketing'}`),
+    DESCRIPTION: escapeHtml('Propuesta de Pandora Marketing: alcance, evidencia e inversión.'),
+    QUOTE_ID: escapeHtml(quote.id || pkg.slug),
+    GENERATED_AT: escapeHtml(pkg.generatedAt || ''),
+    DATE_ISO: escapeHtml(date),
+    DATE_LABEL: escapeHtml(P.dateLabel(date)),
+    BASE: base || '../../',
+    DATA: clientData(quote, pkg.general, pkg.generatedAt)
+  });
 }
 
 export function resolveSlug(pkg) {
@@ -92,6 +92,23 @@ export function validatePackage(pkg) {
   return errors;
 }
 
+export function validateRetiro(pkg) {
+  const errors = [];
+  if (!pkg || typeof pkg !== 'object') return ['El paquete no es un objeto JSON.'];
+  if (pkg.kind !== 'pandora-retiro') errors.push('El paquete no es de tipo pandora-retiro.');
+  if (pkg.version !== 1) errors.push('La versión del paquete no es compatible.');
+  try {
+    resolveSlug(pkg);
+  } catch (error) {
+    errors.push(error.message);
+  }
+  if (!pkg.quoteId) errors.push('El paquete de retiro no tiene identificador de cotización.');
+  if (!pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
+    errors.push('Falta la fecha de generación del paquete.');
+  }
+  return errors;
+}
+
 export function readSiteBase(repoRoot) {
   const file = path.join(repoRoot, 'js', 'config.js');
   const source = readFileSync(file, 'utf8');
@@ -119,9 +136,11 @@ export function prepareClient({ repoRoot, pkg, templatePath, base = '../../', fo
   const file = path.join(dir, 'index.html');
   const quoteId = pkg.quote.id || slug;
 
-  const current = existingQuoteId(file);
-  if (current && current !== quoteId && current !== LEGACY_PAGE_ID && !force) {
-    throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa otro slug o --force.`);
+  if (!force && existsSync(file)) {
+    const current = existingQuoteId(file);
+    if (current !== quoteId && current !== LEGACY_PAGE_ID) {
+      throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa otro slug o --force.`);
+    }
   }
 
   const mediaErrors = P.validateMedia(pkg, {
@@ -147,9 +166,11 @@ export function retireClient({ repoRoot, pkg, force = false, dryRun = false }) {
   const dir = path.join(repoRoot, 'docs', 'c', slug);
   if (!existsSync(dir)) throw new Error(`No existe la publicación "${slug}".`);
 
-  const current = existingQuoteId(path.join(dir, 'index.html'));
-  if (current && pkg.quoteId && current !== pkg.quoteId && current !== LEGACY_PAGE_ID && !force) {
-    throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa --force para retirarla igual.`);
+  if (!force) {
+    const current = existingQuoteId(path.join(dir, 'index.html'));
+    if (current !== pkg.quoteId && current !== LEGACY_PAGE_ID) {
+      throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa --force para retirarla igual.`);
+    }
   }
 
   if (!dryRun) rmSync(dir, { recursive: true, force: true });

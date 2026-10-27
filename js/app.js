@@ -519,8 +519,9 @@
     $('#libraryList').innerHTML = lib.quotes.map((entry) => {
       const q = entry.quote;
       const url = q.meta.publishedUrl || '';
-      const state = q.meta.retiredAt ? 'retirada' : (url ? 'publicada' : 'sin publicar');
-      const stateLabel = state === 'retirada' ? 'Retirada' : (state === 'publicada' ? 'Publicada' : 'Sin publicar');
+      const pending = !q.meta.retiredAt && q.meta.retireRequestedAt;
+      const state = q.meta.retiredAt ? 'retirada' : (pending ? 'pendiente' : (url ? 'publicada' : 'sin publicar'));
+      const stateLabel = state === 'retirada' ? 'Retirada' : (state === 'pendiente' ? 'Retiro pendiente' : (state === 'publicada' ? 'Publicada' : 'Sin publicar'));
       return `<div class="library-row${entry.id === lib.activeId ? ' is-active' : ''}" data-id="${esc(entry.id)}">
         <button class="library-main" data-action="open-quote" data-id="${esc(entry.id)}"${entry.id === lib.activeId ? ' aria-current="true"' : ''}>
           <span class="library-name">${esc(entry.name)}</span>
@@ -530,7 +531,7 @@
         <span class="status-pill status-${state}">${stateLabel}</span>
         <div class="library-actions">
           ${entry.versions.length ? `<button class="mini" data-action="open-history" data-id="${esc(entry.id)}">Historial (${entry.versions.length})</button>` : ''}
-          ${url && !q.meta.retiredAt ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
+          ${url && !q.meta.retiredAt && !pending ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
           <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
           <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>
         </div>
@@ -566,22 +567,36 @@
         if (!data || data.version !== 1 || !Array.isArray(data.quotes) || !data.quotes.length) {
           throw new Error('Formato no válido');
         }
+        const valid = data.quotes.every((entry) => entry
+          && entry.quote
+          && entry.quote.meta
+          && Array.isArray(entry.quote.blocks)
+          && entry.quote.blocks.length);
+        if (!valid) throw new Error('Cotizaciones incompletas');
         if (!confirm('¿Reemplazar la biblioteca actual con este respaldo? Las cotizaciones actuales se perderán.')) return;
-        store.lib = {
+
+        try {
+          localStorage.setItem(P.library.BACKUP_KEY, JSON.stringify(store.lib));
+        } catch (err) {
+          // El respaldo es una red de seguridad; si no cabe, la importación sigue.
+        }
+
+        const next = P.library.normalize({
           version: 1,
           activeId: data.activeId || data.quotes[0].id,
           evidenceBank: data.evidenceBank || { videos: [], images: [] },
           quotes: data.quotes
-        };
-        if (!store.lib.quotes.some((entry) => entry.id === store.lib.activeId)) {
-          store.lib.activeId = store.lib.quotes[0].id;
+        });
+        if (!next.quotes.some((entry) => entry.id === next.activeId)) {
+          next.activeId = next.quotes[0].id;
         }
-        P.library.save(store.lib);
+        store.lib = next;
+        if (!P.library.save(store.lib)) throw new Error('No se pudo guardar');
         quote = P.library.active(store.lib).quote;
         store.quote = quote;
         refresh();
         renderLibrary();
-        toast('Biblioteca importada.');
+        toast('Biblioteca importada. El respaldo anterior quedó en este navegador.');
       } catch (err) {
         toast('No pudimos leer ese respaldo. Revisa que sea un JSON exportado desde la matriz.');
       }
@@ -592,6 +607,7 @@
   /* ---------- publicación ---------- */
 
   const MODE_LABEL = { service: 'Servicio', general: 'General', both: 'Ambas', none: 'Ocultar' };
+  let publishFallback = false;
   const MEDIA_REASON = {
     blob: 'Archivo temporal de esta sesión. Cópialo a docs/assets/media/ y usa su ruta.',
     'data-video': 'Los videos incrustados no se publican. Usa una ruta o un enlace de YouTube/Vimeo.',
@@ -619,6 +635,14 @@
     const now = new Date();
     ensureSlug();
     ensureEvidence();
+    publishFallback = false;
+    const ids = quote.evidence.generalIds;
+    if (quote.evidence.mode === 'general' && !ids.videos.length && !ids.images.length) {
+      quote.evidence.mode = 'service';
+      publishFallback = true;
+      saveNow();
+      refresh();
+    }
     const payload = P.buildClientPayload(quote, { bank: store.lib.evidenceBank, now });
     payload.quote.meta.slug = quote.meta.slug;
     payload.slug = quote.meta.slug;
@@ -637,6 +661,7 @@
     $('[data-publish="services"]').textContent = publishServices();
     $('[data-publish="date"]').textContent = P.dateLabel(payload.quote.meta.date);
     $('[data-publish="mode"]').textContent = MODE_LABEL[quote.evidence.mode] || 'Servicio';
+    $('#publishWarning').hidden = !publishFallback;
 
     const url = pageUrl(payload.slug);
     const link = $('[data-publish-url]');
@@ -687,30 +712,34 @@
     }
 
     const url = pageUrl(payload.slug);
-    quote.meta.date = payload.quote.meta.date;
-    quote.meta.generatedAt = payload.generatedAt;
-    quote.meta.slug = payload.slug;
-    quote.meta.publishedUrl = url;
-    quote.meta.publishedAt = payload.generatedAt;
-    quote.meta.retiredAt = '';
-
-    payload.quote.meta.date = quote.meta.date;
-    payload.quote.meta.generatedAt = quote.meta.generatedAt;
-    payload.quote.meta.slug = quote.meta.slug;
-    payload.quote.meta.publishedUrl = quote.meta.publishedUrl;
-    payload.quote.meta.publishedAt = quote.meta.publishedAt;
+    const generatedAt = payload.generatedAt;
+    payload.quote.meta.date = P.todayISO();
+    payload.quote.meta.generatedAt = generatedAt;
+    payload.quote.meta.slug = payload.slug;
+    payload.quote.meta.publishedUrl = url;
+    payload.quote.meta.publishedAt = generatedAt;
     payload.quote.meta.retiredAt = '';
-
-    const entry = P.library.update(store.lib, store.lib.activeId, quote);
-    P.library.snapshot(store.lib, store.lib.activeId, P.dateLabel(quote.meta.date));
-    store.save();
+    payload.quote.meta.retireRequestedAt = '';
 
     const pkg = { kind: 'pandora-cliente', version: 1, ...payload };
     try {
       downloadJson(`pandora-${payload.slug}-${exportStamp()}.json`, pkg);
     } catch (err) {
-      toast(`No se pudo descargar el paquete. La URL será ${url}`);
+      toast('No se pudo descargar el paquete. No se marcó como publicada.');
+      return;
     }
+
+    quote.meta.date = payload.quote.meta.date;
+    quote.meta.generatedAt = generatedAt;
+    quote.meta.slug = payload.slug;
+    quote.meta.publishedUrl = url;
+    quote.meta.publishedAt = generatedAt;
+    quote.meta.retiredAt = '';
+    quote.meta.retireRequestedAt = '';
+
+    const entry = P.library.update(store.lib, store.lib.activeId, quote);
+    P.library.snapshot(store.lib, store.lib.activeId, P.dateLabel(quote.meta.date));
+    if (!store.save()) toast('No se pudo guardar en este navegador. Descarga un respaldo.');
 
     $('#publishDialog').close();
     refresh();
@@ -733,13 +762,13 @@
       generatedAt: new Date().toISOString()
     };
     downloadJson(`pandora-retiro-${target.meta.slug}.json`, pkg);
-    target.meta.retiredAt = pkg.generatedAt;
+    target.meta.retireRequestedAt = pkg.generatedAt;
     P.library.update(store.lib, entry.id, target);
     if (entry.id === store.lib.activeId) quote = target;
     store.save();
     refresh();
     renderLibrary();
-    toast('Paquete de retiro descargado. Arrástralo sobre «Publicar cliente.command».');
+    toast('Retiro descargado. Arrástralo sobre «Publicar cliente.command» para aplicar.');
   }
 
   let historyCtx = null;
@@ -761,6 +790,7 @@
     const entry = store.lib.quotes.find((item) => item.id === historyCtx);
     if (!entry) return;
     if (!confirm('¿Restaurar esta versión? Los cambios actuales se reemplazan. La URL publicada no cambia hasta que vuelvas a exportar.')) return;
+    P.library.snapshot(store.lib, historyCtx, 'Antes de restaurar');
     const restored = P.library.restore(store.lib, historyCtx, at);
     if (!restored) return;
     if (historyCtx === store.lib.activeId) {

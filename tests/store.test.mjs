@@ -79,6 +79,26 @@ test('snapshots cap at ten and restore', () => {
   assert.equal(lib.quotes[0].quote.meta.client, restored.meta.client);
 });
 
+test('an unknown library version is backed up before reset', () => {
+  const broken = { version: 2, activeId: 'q_x', quotes: [{ id: 'q_x', quote: P.defaultQuote() }] };
+  const storage = fakeStorage({ [P.library.KEY]: JSON.stringify(broken) });
+  P.library.load(storage);
+
+  assert.ok(storage.getItem(P.library.BACKUP_KEY), 'guarda una copia del original');
+  assert.match(storage.getItem(P.library.BACKUP_KEY), /"version":2/);
+});
+
+test('an emptied bank is not reseeded on reload', () => {
+  const storage = fakeStorage();
+  const lib = P.library.load(storage);
+  lib.evidenceBank = { videos: [], images: [] };
+  P.library.save(lib, storage);
+
+  const again = P.library.load(storage);
+  assert.equal(again.evidenceBank.videos.length, 0);
+  assert.equal(again.evidenceBank.images.length, 0);
+});
+
 test('save and load round-trip keeps the library', () => {
   const storage = fakeStorage();
   const lib = P.library.load(storage);

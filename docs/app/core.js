@@ -174,10 +174,9 @@
     const pkg = payload || {};
     const quote = pkg.quote || {};
 
-    const check = (piece) => {
-      const src = String((piece && piece.src) || '');
+    const checkValue = (value, title) => {
+      const src = String(value || '');
       if (!src) return;
-      const title = (piece && piece.title) || 'Pieza';
       const add = (reason) => errors.push({ title, src, reason });
 
       if (/^blob:/i.test(src)) return add('blob');
@@ -190,11 +189,18 @@
       }
       if (/^(?:javascript|vbscript|file):/i.test(src)) return add('scheme');
       if (/^assets\//i.test(src)) {
+        if (src.split('/').includes('..') || src.includes('//') || src.includes('\\')) return add('scheme');
         if (typeof opts.exists === 'function' && !opts.exists('docs/' + src)) add('missing');
         return;
       }
       if (/^https?:\/\//i.test(src)) return;
       add('scheme');
+    };
+
+    const check = (piece) => {
+      const title = (piece && piece.title) || 'Pieza';
+      checkValue(piece && piece.src, title);
+      checkValue(piece && piece.poster, `${title} (portada)`);
     };
 
     (quote.blocks || []).forEach((block) => {

@@ -8,7 +8,8 @@ import {
   prepareClient,
   readSiteBase,
   retireClient,
-  validatePackage
+  validatePackage,
+  validateRetiro
 } from './publicar-lib.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,9 +49,9 @@ function commitAndPush(relPath, message, skipPush) {
   const add = git(['add', '-A', '--', relPath]);
   if (add.status !== 0) fail('git add falló.');
 
-  const staged = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: repoRoot });
+  const staged = spawnSync('git', ['diff', '--cached', '--quiet', '--', relPath], { cwd: repoRoot });
   if (staged.status !== 0) {
-    const commit = git(['commit', '-m', message]);
+    const commit = git(['commit', '-m', message, '--', relPath]);
     if (commit.status !== 0) fail('git commit falló.');
   } else {
     console.log('Sin cambios que publicar.');
@@ -79,19 +80,21 @@ const siteBase = readSiteBase(repoRoot);
 const url = pkg && pkg.slug ? pageUrl(siteBase, pkg.slug) : '';
 
 if (isRetiro) {
-  if (!pkg.slug || !pkg.quoteId) fail('El paquete de retiro no tiene slug o identificador.');
+  const retiroErrors = validateRetiro(pkg);
+  if (retiroErrors.length) fail(retiroErrors.join('\n'));
+  if (options.outDir) fail('--out no aplica a un paquete de retiro; usa --dry-run.');
+  const message = `Retirar ${pkg.client || pkg.slug} — ${pkg.generatedAt.slice(0, 10)}`;
   const { dir } = retireClient({
     repoRoot,
     pkg,
     force: options.force,
-    dryRun: options.dryRun || Boolean(options.outDir)
+    dryRun: options.dryRun
   });
 
-  if (options.dryRun || options.outDir) {
+  if (options.dryRun) {
     console.log(`Retiro simulado: se quitaría ${dir}`);
   } else {
     const relPath = path.relative(repoRoot, dir);
-    const message = `Retirar ${pkg.client || pkg.slug} — ${pkg.generatedAt.slice(0, 10)}`;
     commitAndPush(relPath, message, options.noPush);
     console.log('Publicación retirada.');
   }

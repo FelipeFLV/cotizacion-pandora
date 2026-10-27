@@ -280,6 +280,7 @@
         publishedUrl: '',
         publishedAt: '',
         retiredAt: '',
+        retireRequestedAt: '',
         conditions: [
           'La proforma tiene una vigencia de 30 días desde la fecha de emisión.',
           'Los precios están expresados en soles peruanos y no incluyen I.G.V. salvo indicación contraria.',

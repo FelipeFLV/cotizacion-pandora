@@ -17,6 +17,7 @@
 
   const KEY = 'pandora.biblioteca.v1';
   const OLD_KEY = 'pandora.cotizacion.v1';
+  const BACKUP_KEY = 'pandora.biblioteca.backup';
   const MAX_VERSIONS = 10;
 
   const now = () => new Date().toISOString();
@@ -60,6 +61,7 @@
     quote.meta.publishedUrl = quote.meta.publishedUrl || '';
     quote.meta.publishedAt = quote.meta.publishedAt || '';
     quote.meta.retiredAt = quote.meta.retiredAt || '';
+    quote.meta.retireRequestedAt = quote.meta.retireRequestedAt || '';
     quote.blocks = (quote.blocks || []).map((block) => {
       if (!block.serviceName) {
         const service = C.catalog[block.serviceId];
@@ -77,6 +79,11 @@
       if (!entry.id) entry.id = 'q_' + P.uid('');
       entry.quote = entry.quote || C.defaultQuote();
       entry.quote.id = entry.id;
+      entry.quote.meta = entry.quote.meta || {};
+      entry.quote.meta.retireRequestedAt = entry.quote.meta.retireRequestedAt || '';
+      entry.quote.evidence = entry.quote.evidence && entry.quote.evidence.mode
+        ? entry.quote.evidence
+        : { mode: 'service', generalIds: { videos: [], images: [] } };
       entry.name = entry.quote.meta && entry.quote.meta.client ? entry.quote.meta.client : (entry.name || 'Cliente sin nombre');
       entry.updatedAt = entry.updatedAt || now();
       entry.versions = Array.isArray(entry.versions) ? entry.versions : [];
@@ -91,25 +98,36 @@
 
   function fresh() {
     const entry = makeEntry(C.defaultQuote());
-    return { version: 1, activeId: entry.id, evidenceBank: emptyBank(), quotes: [entry] };
+    return { version: 1, activeId: entry.id, evidenceBank: C.seedEvidenceBank(), quotes: [entry] };
   }
 
   const library = {
     KEY,
     OLD_KEY,
+    BACKUP_KEY,
     MAX_VERSIONS,
+    normalize,
 
     load(storage) {
       const store = storage || defaultStorage();
+      let raw = null;
       let lib = null;
       try {
-        lib = JSON.parse((store && store.getItem(KEY)) || 'null');
+        raw = store ? store.getItem(KEY) : null;
+        lib = JSON.parse(raw || 'null');
       } catch (err) {
         lib = null;
       }
 
       let migratedOld = null;
       if (!lib || lib.version !== 1 || !Array.isArray(lib.quotes) || !lib.quotes.length) {
+        if (raw) {
+          try {
+            store.setItem(BACKUP_KEY, raw);
+          } catch (err) {
+            // Sin respaldo si el almacenamiento está lleno; la carga sigue en memoria.
+          }
+        }
         try {
           migratedOld = JSON.parse((store && store.getItem(OLD_KEY)) || 'null');
         } catch (err) {
@@ -118,16 +136,13 @@
         const usable = migratedOld && Array.isArray(migratedOld.blocks) && migratedOld.blocks.length;
         if (usable) {
           const entry = makeEntry(migrateQuote(migratedOld, 'q_' + P.uid('')));
-          lib = { version: 1, activeId: entry.id, evidenceBank: emptyBank(), quotes: [entry] };
+          lib = { version: 1, activeId: entry.id, evidenceBank: C.seedEvidenceBank(), quotes: [entry] };
         } else {
           lib = fresh();
         }
       }
 
       normalize(lib);
-      if (!lib.evidenceBank.videos.length && !lib.evidenceBank.images.length) {
-        lib.evidenceBank = C.seedEvidenceBank();
-      }
       library.save(lib, store);
       if (migratedOld && store && store.removeItem) store.removeItem(OLD_KEY);
       return lib;
@@ -174,6 +189,7 @@
       quote.meta.publishedUrl = '';
       quote.meta.publishedAt = '';
       quote.meta.retiredAt = '';
+      quote.meta.retireRequestedAt = '';
       entry.versions = [];
       lib.quotes.push(entry);
       lib.activeId = entry.id;
@@ -273,6 +289,7 @@
       freshQuote.meta.publishedUrl = '';
       freshQuote.meta.publishedAt = '';
       freshQuote.meta.retiredAt = '';
+      freshQuote.meta.retireRequestedAt = '';
       this.quote = freshQuote;
       this.save();
       this.emit();

@@ -10,7 +10,8 @@ import {
   readSiteBase,
   resolveSlug,
   retireClient,
-  validatePackage
+  validatePackage,
+  validateRetiro
 } from '../tools/publicar-lib.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,10 +40,12 @@ function touchAssets(repoRoot, pkg) {
     ...(pkg.general.images || [])
   ];
   pieces.forEach((piece) => {
-    if (!piece.src || !piece.src.startsWith('assets/')) return;
-    const target = path.join(repoRoot, 'docs', piece.src);
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, '');
+    [piece.src, piece.poster].forEach((src) => {
+      if (!src || !src.startsWith('assets/')) return;
+      const target = path.join(repoRoot, 'docs', src);
+      mkdirSync(path.dirname(target), { recursive: true });
+      writeFileSync(target, '');
+    });
   });
 }
 
@@ -113,6 +116,16 @@ test('the legacy H&S page can be replaced once', () => {
   assert.match(readFileSync(file, 'utf8'), /content="q_test"/);
 });
 
+test('a page without quote id is not overwritten silently', () => {
+  const repoRoot = tempRepo();
+  const pkg = loadPackage('cliente.json');
+  touchAssets(repoRoot, pkg);
+  mkdirSync(path.join(repoRoot, 'docs/c/demo'), { recursive: true });
+  writeFileSync(path.join(repoRoot, 'docs/c/demo/index.html'), '<!DOCTYPE html><p>vieja</p>');
+
+  assert.throws(() => prepareClient({ repoRoot, pkg, templatePath }), /otra cotización/);
+});
+
 test('missing asset throws with title and path', () => {
   const repoRoot = tempRepo();
   const pkg = loadPackage('cliente.json');
@@ -123,6 +136,17 @@ test('missing asset throws with title and path', () => {
     () => prepareClient({ repoRoot, pkg, templatePath }),
     /No existe el medio .*nope\.png/
   );
+});
+
+test('a missing or unsafe poster is rejected', () => {
+  const repoRoot = tempRepo();
+  const pkg = loadPackage('cliente.json');
+  touchAssets(repoRoot, pkg);
+  pkg.quote.blocks[0].videos[0].poster = 'assets/media/nope-poster.jpg';
+  assert.throws(() => prepareClient({ repoRoot, pkg, templatePath }), /portada.*nope-poster\.jpg/);
+
+  pkg.quote.blocks[0].videos[0].poster = 'blob:http://x/y';
+  assert.throws(() => prepareClient({ repoRoot, pkg, templatePath }), /portada.*temporal/i);
 });
 
 test('unsafe media is rejected by the shared rules', () => {
@@ -152,6 +176,15 @@ test('retire removes the folder only for the same quote id', () => {
 
   retireClient({ repoRoot, pkg: retiro });
   assert.equal(existsSync(path.join(repoRoot, 'docs/c/demo')), false);
+});
+
+test('validateRetiro requires a complete package', () => {
+  const pkg = loadPackage('retiro.json');
+  assert.deepEqual(validateRetiro(pkg), []);
+  assert.match(validateRetiro({ ...pkg, kind: 'pandora-cliente' }).join(' '), /retiro/i);
+  assert.match(validateRetiro({ ...pkg, version: 2 }).join(' '), /versión/i);
+  assert.match(validateRetiro({ ...pkg, quoteId: '' }).join(' '), /identificador/i);
+  assert.match(validateRetiro({ ...pkg, generatedAt: 'ayer' }).join(' '), /fecha/i);
 });
 
 test('retiring a slug that does not exist throws', () => {

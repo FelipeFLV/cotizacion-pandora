@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import net from 'node:net';
@@ -302,6 +302,16 @@ try {
   assert.equal(await pub.locator('[data-action="download-package"]').isDisabled(), false);
   await pub.locator('[data-action="close-publish"]').click();
 
+  await pub.evaluate(() => {
+    P.store.quote.evidence = { mode: 'general', generalIds: { videos: [], images: [] } };
+    P.store.save();
+  });
+  await pub.locator('[data-action="open-publish"]').click();
+  await pub.waitForSelector('#publishDialog[open]');
+  assert.equal(await pub.locator('#publishWarning').isVisible(), true, 'general sin piezas avisa');
+  assert.equal((await pub.locator('[data-publish="mode"]').innerText()).trim(), 'Servicio', 'general sin piezas cae a servicio');
+  await pub.locator('[data-action="close-publish"]').click();
+
   await pub.locator('[data-action="open-library"]').click();
   await pub.waitForSelector('#libraryDialog[open]');
   const [retireDownload] = await Promise.all([
@@ -315,7 +325,7 @@ try {
   assert.equal(retire.version, 1);
   assert.equal(retire.slug, slug);
   assert.match(retire.quoteId, /^q_/);
-  await pub.waitForFunction(() => document.querySelector('.status-pill').textContent === 'Retirada');
+  await pub.waitForFunction(() => document.querySelector('.status-pill').textContent === 'Retiro pendiente');
   assert.equal(await pub.locator('.library-row').count(), 1, 'la cotización sigue en la biblioteca');
 
   assert.deepEqual(pubErrors, [], `errores al exportar:\n${pubErrors.join('\n')}`);
@@ -381,6 +391,119 @@ try {
   assert.equal(await page.evaluate(() => Object.keys(localStorage).length), 0, 'el cliente no debe escribir en localStorage');
 
   assert.deepEqual(clientErrors, [], `errores en el cliente:\n${clientErrors.join('\n')}`);
+
+
+  /* ---------- PDF ---------- */
+  await page.goto(`${serverUrl}/c/_e2e-service/`);
+  await page.waitForSelector('body.ready');
+  await page.emulateMedia({ media: 'print' });
+  const print = await page.evaluate(() => {
+    const display = (selector) => {
+      const el = document.querySelector(selector);
+      return el ? getComputedStyle(el).display : 'missing';
+    };
+    return {
+      topbar: display('.topbar'),
+      actions: display('.topbar-actions'),
+      lightbox: display('.lightbox'),
+      buttons: document.querySelector('[data-action="print"]').getClientRects().length > 0,
+      brand: display('.print-brand'),
+      footer: display('.print-foot')
+    };
+  });
+  assert.equal(print.topbar, 'none', 'la barra superior se oculta al imprimir');
+  assert.equal(print.actions, 'none', 'las acciones se ocultan al imprimir');
+  assert.equal(print.lightbox, 'none', 'el lightbox se oculta al imprimir');
+  assert.equal(print.buttons, false, 'el botón de PDF se oculta al imprimir');
+  assert.notEqual(print.brand, 'none', 'la marca impresa es visible');
+  assert.notEqual(print.footer, 'none', 'el pie impreso es visible');
+  await page.emulateMedia({ media: 'screen' });
+  console.log('E2E PDF: OK');
+
+  /* ---------- responsive ---------- */
+  const widths = [360, 390, 768, 1024, 1440];
+  const respContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const resp = await respContext.newPage();
+  const respErrors = watch(resp);
+  await resp.goto(matrixUrl);
+  await resp.waitForSelector('body.ready');
+  await resp.locator('[data-action="toggle-edit"]').click();
+  const longName = 'Cliente con un nombre largo de prueba 01 '.repeat(2).slice(0, 60).trim();
+  await resp.locator('[data-text="meta.client"]').first().fill(longName);
+  await resp.waitForTimeout(700);
+  await resp.locator('[data-action="open-library"]').click();
+  await resp.waitForSelector('#libraryDialog[open]');
+
+  for (const width of widths) {
+    await resp.setViewportSize({ width, height: 900 });
+    await resp.waitForTimeout(120);
+    const over = await resp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(over <= 1, `la matriz desborda ${over}px a ${width}px con un nombre de 60 caracteres`);
+  }
+  await resp.locator('[data-action="close-library"]').click();
+
+  for (const mode of ['service', 'general']) {
+    await page.goto(`${serverUrl}/c/_e2e-${mode}/`);
+    await page.waitForSelector('body.ready');
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(100);
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      assert.ok(over <= 1, `el cliente (${mode}) desborda ${over}px a ${width}px`);
+    }
+  }
+
+  assert.deepEqual(respErrors, [], `errores responsive:\n${respErrors.join('\n')}`);
+  await respContext.close();
+  console.log('E2E responsive: OK');
+
+  /* ---------- publicación --dry-run ---------- */
+  const fixture = path.join(root, 'tests/fixtures/cliente.json');
+  const outDir = path.join(root, 'tests/tmp/pub');
+  const dry = spawnSync(process.execPath, ['tools/publicar.mjs', fixture, '--dry-run', '--out', outDir], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+  assert.equal(dry.status, 0, `el dry run falló:\n${dry.stderr}`);
+  assert.match(dry.stdout, /tests\/tmp\/pub\/docs\/c\/demo\/index\.html/);
+  assert.match(dry.stdout, /https:\/\/felipeflv\.github\.io\/cotizacion-pandora\/c\/demo\//);
+  assert.equal(existsSync(path.join(outDir, 'docs/c/demo/index.html')), true, 'el dry run escribe la página');
+  assert.equal(existsSync(path.join(root, 'docs/c/demo')), false, 'el dry run no toca docs/c');
+
+  const invalid = path.join(root, 'tests/tmp/invalid.json');
+  const invalidPkg = JSON.parse(readFileSync(fixture, 'utf8'));
+  invalidPkg.slug = 'Demo!';
+  writeFileSync(invalid, JSON.stringify(invalidPkg));
+  const bad = spawnSync(process.execPath, ['tools/publicar.mjs', invalid, '--dry-run', '--out', outDir], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+  assert.equal(bad.status, 1, 'un slug inválido aborta');
+  assert.match(bad.stderr, /slug/i);
+
+  const missing = path.join(root, 'tests/tmp/missing.json');
+  const missingPkg = JSON.parse(readFileSync(fixture, 'utf8'));
+  missingPkg.quote.blocks[0].images[0].src = 'assets/media/nope.png';
+  writeFileSync(missing, JSON.stringify(missingPkg));
+  const absent = spawnSync(process.execPath, ['tools/publicar.mjs', missing, '--dry-run', '--out', outDir], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+  assert.equal(absent.status, 1, 'un medio inexistente aborta');
+  assert.match(absent.stderr, /nope\.png/);
+
+  const badPoster = path.join(root, 'tests/tmp/poster.json');
+  const posterPkg = JSON.parse(readFileSync(fixture, 'utf8'));
+  posterPkg.quote.blocks[0].videos[0].poster = 'assets/media/nope-poster.jpg';
+  writeFileSync(badPoster, JSON.stringify(posterPkg));
+  const poster = spawnSync(process.execPath, ['tools/publicar.mjs', badPoster, '--dry-run', '--out', outDir], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+  assert.equal(poster.status, 1, 'una portada inexistente aborta');
+  assert.match(poster.stderr, /portada.*nope-poster\.jpg/);
+  console.log('E2E publicación: OK');
+
   await clientContext.close();
   console.log('E2E cliente: OK');
 } finally {

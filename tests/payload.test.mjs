@@ -84,6 +84,20 @@ test('unsafe schemes are rejected', () => {
   assert.deepEqual(reasons, ['scheme', 'scheme']);
 });
 
+test('posters are validated too', () => {
+  const q = P.defaultQuote();
+  q.blocks[0].videos[0].poster = 'blob:http://x/poster';
+  const reasons = P.validateMedia(P.buildClientPayload(q, { bank: P.seedEvidenceBank(), now: NOW })).map((e) => e.reason);
+  assert.deepEqual(reasons, ['blob']);
+});
+
+test('assets cannot escape the docs folder', () => {
+  const q = P.defaultQuote();
+  q.blocks[0].images[0].src = 'assets/../../index.html';
+  const reasons = P.validateMedia(P.buildClientPayload(q, { bank: P.seedEvidenceBank(), now: NOW })).map((e) => e.reason);
+  assert.deepEqual(reasons, ['scheme']);
+});
+
 test('missing asset is reported with the path', () => {
   const q = P.defaultQuote();
   const p = P.buildClientPayload(q, { bank: P.seedEvidenceBank(), now: NOW });
