@@ -185,6 +185,7 @@ test('validateRetiro requires a complete package', () => {
   assert.match(validateRetiro({ ...pkg, version: 2 }).join(' '), /versión/i);
   assert.match(validateRetiro({ ...pkg, quoteId: '' }).join(' '), /identificador/i);
   assert.match(validateRetiro({ ...pkg, generatedAt: 'ayer' }).join(' '), /fecha/i);
+  assert.match(validateRetiro({ ...pkg, generatedAt: 1750000000000 }).join(' '), /fecha/i);
 });
 
 test('retiring a slug that does not exist throws', () => {

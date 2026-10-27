@@ -85,7 +85,7 @@ export function validatePackage(pkg) {
     errors.push(error.message);
   }
 
-  if (!pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
+  if (typeof pkg.generatedAt !== 'string' || !pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
     errors.push('Falta la fecha de generación del paquete.');
   }
 
@@ -103,7 +103,7 @@ export function validateRetiro(pkg) {
     errors.push(error.message);
   }
   if (!pkg.quoteId) errors.push('El paquete de retiro no tiene identificador de cotización.');
-  if (!pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
+  if (typeof pkg.generatedAt !== 'string' || !pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
     errors.push('Falta la fecha de generación del paquete.');
   }
   return errors;

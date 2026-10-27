@@ -159,6 +159,17 @@ try {
   assert.equal(backup.quotes.length, 3, 'el respaldo contiene las tres cotizaciones');
   assert.equal(backup.version, 1);
 
+  await lib.locator('[data-action="close-library"]').click();
+  await lib.locator('[data-action="toggle-edit"]').click();
+  await lib.locator('[data-text="meta.client"]').first().fill('Nombre Temporal');
+  await lib.waitForTimeout(700);
+  await lib.locator('[data-action="open-library"]').click();
+  await lib.waitForSelector('#libraryDialog[open]');
+  await lib.setInputFiles('#libraryFile', backupPath);
+  await lib.waitForFunction(() => document.querySelector('.library-row [aria-current="true"] .library-name').textContent === 'H&S Inmobiliaria');
+  assert.equal((await lib.locator('[data-library-count]').innerText()).trim(), '3', 'importar restaura las tres');
+  assert.ok(await lib.evaluate(() => localStorage.getItem('pandora.biblioteca.backup')), 'guarda el respaldo previo a importar');
+
   while ((await lib.locator('.library-row').count()) > 1) {
     await lib.locator('.library-row').nth(1).locator('[data-action="delete-quote"]').click();
   }
@@ -303,7 +314,7 @@ try {
   await pub.locator('[data-action="close-publish"]').click();
 
   await pub.evaluate(() => {
-    P.store.quote.evidence = { mode: 'general', generalIds: { videos: [], images: [] } };
+    P.store.quote.evidence = { mode: 'general', generalIds: { videos: ['e_missing'], images: [] } };
     P.store.save();
   });
   await pub.locator('[data-action="open-publish"]').click();
@@ -311,6 +322,11 @@ try {
   assert.equal(await pub.locator('#publishWarning').isVisible(), true, 'general sin piezas avisa');
   assert.equal((await pub.locator('[data-publish="mode"]').innerText()).trim(), 'Servicio', 'general sin piezas cae a servicio');
   await pub.locator('[data-action="close-publish"]').click();
+  assert.equal(
+    await pub.evaluate(() => P.store.quote.evidence.mode),
+    'general',
+    'abrir el diálogo no cambia el modo guardado'
+  );
 
   await pub.locator('[data-action="open-library"]').click();
   await pub.waitForSelector('#libraryDialog[open]');
@@ -327,6 +343,9 @@ try {
   assert.match(retire.quoteId, /^q_/);
   await pub.waitForFunction(() => document.querySelector('.status-pill').textContent === 'Retiro pendiente');
   assert.equal(await pub.locator('.library-row').count(), 1, 'la cotización sigue en la biblioteca');
+  await pub.locator('[data-action="cancel-retire"]').click();
+  await pub.waitForFunction(() => document.querySelector('.status-pill').textContent === 'Publicada');
+  assert.equal(await pub.locator('[data-action="retire-quote"]').count(), 1, 'el retiro se puede regenerar');
 
   assert.deepEqual(pubErrors, [], `errores al exportar:\n${pubErrors.join('\n')}`);
   await pubContext.close();

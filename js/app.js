@@ -531,6 +531,7 @@
         <span class="status-pill status-${state}">${stateLabel}</span>
         <div class="library-actions">
           ${entry.versions.length ? `<button class="mini" data-action="open-history" data-id="${esc(entry.id)}">Historial (${entry.versions.length})</button>` : ''}
+          ${pending ? `<button class="mini" data-action="cancel-retire" data-id="${esc(entry.id)}">Cancelar retiro</button>` : ''}
           ${url && !q.meta.retiredAt && !pending ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
           <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
           <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>
@@ -590,15 +591,17 @@
         if (!next.quotes.some((entry) => entry.id === next.activeId)) {
           next.activeId = next.quotes[0].id;
         }
+        if (!P.library.save(next)) throw new Error('No se pudo guardar el respaldo importado');
         store.lib = next;
-        if (!P.library.save(store.lib)) throw new Error('No se pudo guardar');
         quote = P.library.active(store.lib).quote;
         store.quote = quote;
         refresh();
         renderLibrary();
         toast('Biblioteca importada. El respaldo anterior quedó en este navegador.');
       } catch (err) {
-        toast('No pudimos leer ese respaldo. Revisa que sea un JSON exportado desde la matriz.');
+        toast(/guardar/i.test(err.message)
+          ? 'No se pudo guardar el respaldo importado. La biblioteca anterior sigue intacta.'
+          : 'No pudimos leer ese respaldo. Revisa que sea un JSON exportado desde la matriz.');
       }
     };
     reader.readAsText(file);
@@ -608,6 +611,7 @@
 
   const MODE_LABEL = { service: 'Servicio', general: 'General', both: 'Ambas', none: 'Ocultar' };
   let publishFallback = false;
+  let publishMode = 'service';
   const MEDIA_REASON = {
     blob: 'Archivo temporal de esta sesión. Cópialo a docs/assets/media/ y usa su ruta.',
     'data-video': 'Los videos incrustados no se publican. Usa una ruta o un enlace de YouTube/Vimeo.',
@@ -631,19 +635,31 @@
     return slug;
   }
 
-  function buildPayload() {
+  function buildPayload(options) {
     const now = new Date();
     ensureSlug();
     ensureEvidence();
     publishFallback = false;
-    const ids = quote.evidence.generalIds;
-    if (quote.evidence.mode === 'general' && !ids.videos.length && !ids.images.length) {
-      quote.evidence.mode = 'service';
-      publishFallback = true;
-      saveNow();
-      refresh();
+    let source = quote;
+
+    if (quote.evidence.mode === 'general') {
+      const preview = P.buildClientPayload(quote, { bank: store.lib.evidenceBank, now });
+      if (!preview.general.videos.length && !preview.general.images.length) {
+        publishFallback = true;
+        if (options && options.applyFallback) {
+          quote.evidence.mode = 'service';
+          saveNow();
+          refresh();
+        } else {
+          source = Object.assign({}, quote, {
+            evidence: Object.assign({}, quote.evidence, { mode: 'service' })
+          });
+        }
+      }
     }
-    const payload = P.buildClientPayload(quote, { bank: store.lib.evidenceBank, now });
+
+    publishMode = publishFallback ? 'service' : quote.evidence.mode;
+    const payload = P.buildClientPayload(source, { bank: store.lib.evidenceBank, now });
     payload.quote.meta.slug = quote.meta.slug;
     payload.slug = quote.meta.slug;
     return payload;
@@ -660,7 +676,7 @@
     $('[data-publish="client"]').textContent = quote.meta.client || '';
     $('[data-publish="services"]').textContent = publishServices();
     $('[data-publish="date"]').textContent = P.dateLabel(payload.quote.meta.date);
-    $('[data-publish="mode"]').textContent = MODE_LABEL[quote.evidence.mode] || 'Servicio';
+    $('[data-publish="mode"]').textContent = MODE_LABEL[publishMode] || 'Servicio';
     $('#publishWarning').hidden = !publishFallback;
 
     const url = pageUrl(payload.slug);
@@ -704,7 +720,7 @@
   }
 
   function downloadPackage() {
-    const payload = buildPayload();
+    const payload = buildPayload({ applyFallback: true });
     const errors = P.validateMedia(payload);
     if (errors.length) {
       renderPublish(payload, errors);
@@ -745,6 +761,18 @@
     refresh();
     renderLibrary();
     if (entry) toast('Paquete descargado. Arrástralo sobre «Publicar cliente.command».');
+  }
+
+  function cancelRetire(id) {
+    const entry = store.lib.quotes.find((item) => item.id === id);
+    if (!entry) return;
+    entry.quote.meta.retireRequestedAt = '';
+    P.library.update(store.lib, entry.id, entry.quote);
+    if (entry.id === store.lib.activeId) quote = entry.quote;
+    store.save();
+    refresh();
+    renderLibrary();
+    toast('Retiro cancelado en esta biblioteca. Si ya aplicaste el paquete, la página seguirá retirada.');
   }
 
   function retireQuote(id) {
@@ -936,6 +964,7 @@
     'close-publish'() { $('#publishDialog').close(); },
     'download-package'() { downloadPackage(); },
     'retire-quote'() { retireQuote(this.dataset.id); },
+    'cancel-retire'() { cancelRetire(this.dataset.id); },
     'open-history'() { openHistory(this.dataset.id); },
     'close-history'() { $('#historyDialog').close(); },
     'restore-version'() { restoreVersion(this.dataset.at); },

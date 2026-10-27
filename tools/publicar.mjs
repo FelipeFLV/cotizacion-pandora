@@ -45,13 +45,14 @@ function git(args) {
   return spawnSync('git', args, { cwd: repoRoot, stdio: 'inherit' });
 }
 
-function commitAndPush(relPath, message, skipPush) {
-  const add = git(['add', '-A', '--', relPath]);
+function commitAndPush(relPaths, message, skipPush) {
+  const paths = Array.isArray(relPaths) ? relPaths : [relPaths];
+  const add = git(['add', '-A', '--', ...paths]);
   if (add.status !== 0) fail('git add falló.');
 
-  const staged = spawnSync('git', ['diff', '--cached', '--quiet', '--', relPath], { cwd: repoRoot });
+  const staged = spawnSync('git', ['diff', '--cached', '--quiet', '--', ...paths], { cwd: repoRoot });
   if (staged.status !== 0) {
-    const commit = git(['commit', '-m', message, '--', relPath]);
+    const commit = git(['commit', '-m', message, '--', ...paths]);
     if (commit.status !== 0) fail('git commit falló.');
   } else {
     console.log('Sin cambios que publicar.');
@@ -120,7 +121,7 @@ if (skipGit) {
 } else {
   const relPath = path.relative(repoRoot, target);
   const message = `Publicar ${pkg.quote.meta.client} — ${pkg.quote.meta.date || new Date().toISOString().slice(0, 10)}`;
-  commitAndPush(relPath, message, options.noPush);
+  commitAndPush([relPath, 'docs/assets'], message, options.noPush);
   console.log('Publicación actualizada.');
 }
 
