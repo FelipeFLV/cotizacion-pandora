@@ -1,159 +1,159 @@
 # Cotizador Pandora
 
-Dashboard web interactivo para presentar cotizaciones de Pandora Marketing: alcance por servicio, evidencia (videos y piezas) e inversión, con edición en vivo y exportación a PDF.
+Dos capas en un mismo repo:
 
-No tiene build, ni dependencias, ni servidor propio: son archivos estáticos.
+- **Matriz privada** (`index.html`): se abre en tu Mac y sirve para preparar todas las cotizaciones (cliente 01, 02…), editar precios, condiciones, evidencias y datos de pago.
+- **Versión cliente** (`docs/c/<slug>/`): página de solo lectura, publicada en GitHub Pages, sin edición ni guardado. Queda visible aunque la Mac esté apagada.
+
+La propuesta de H&S Inmobiliaria sigue disponible en la URL de siempre:
+<https://felipeflv.github.io/cotizacion-pandora/> → redirige a su página de cliente.
 
 ---
 
-## Abrir
+## 1. Abrir la matriz
 
-**Opción rápida:** doble clic en `index.html`.
+Doble clic en `index.html`. No necesita servidor ni build.
 
-**Opción recomendada** (evita restricciones del navegador con `file://` y con los videos):
+Si el navegador bloquea videos con `file://`:
 
 ```bash
 cd "Cotizador Pandora"
 python3 -m http.server 4173
 ```
 
-Luego abre <http://localhost:4173>.
-
-Funciona en Chrome, Edge, Safari y Firefox actuales. Los videos se reproducen dentro del dashboard; los MP4 incluidos usan H.264, compatibles con todos los navegadores modernos.
+Y abre <http://localhost:4173>.
 
 ---
 
-## Editar la cotización
+## 2. Preparar una cotización
 
-1. Pulsa **Editar** (arriba a la derecha). Se habilitan los campos y aparecen los controles de edición.
-2. Haz clic en cualquier texto y escribe: cliente, fecha, duración, vigencia, entregables, consideraciones, condiciones y datos bancarios.
-3. Los montos se editan directamente en la columna de inversión. Los porcentajes de pago (60/40) también.
-4. Con **+ Añadir** puedes sumar entregables, consideraciones, condiciones, líneas de inversión o servicios completos.
-5. La **✕** de cada fila elimina ese ítem.
+1. Pulsa **Editar** y haz clic en cualquier texto para cambiarlo.
+2. **Cotizaciones** (arriba) abre la biblioteca guardada en este navegador:
+   - **Nueva** crea una cotización desde un servicio.
+   - **Duplicar** copia una existente.
+   - **Eliminar** borra la seleccionada (siempre queda al menos una).
+   - **Respaldar** descarga un JSON con toda la biblioteca.
+   - **Importar respaldo** reemplaza la biblioteca actual.
+3. El pie “Guardado en este navegador” confirma cada guardado.
 
-Los cambios se guardan automáticamente en este navegador (`localStorage`, clave `pandora.cotizacion.v1`). No se suben a ningún servidor.
+La biblioteca vive en `localStorage` (clave `pandora.biblioteca.v1`). No se sube al repo ni a ningún servidor. Si limpias los datos del navegador se pierde: restaura tu respaldo JSON.
 
-Para volver al estado original: **Editar → Restablecer**.
-
-### Varios servicios en una cotización
-
-**Editar → Añadir otro servicio a esta cotización**. Cada servicio añade su propio capítulo (alcance + evidencia), sus ítems de inversión y se suma al total. El selector permite cambiar el servicio de un capítulo ya creado.
-
-Servicios disponibles en el catálogo: Audiovisual, Branding, Diseño gráfico, Redes sociales y Meta Ads.
+El costo y el precio son el mismo número: el precio se arma con las líneas de inversión de cada servicio.
 
 ---
 
-## Reemplazar la evidencia
+## 3. Evidencias
 
-Cada capítulo tiene dos videos y tres piezas gráficas. En modo edición, usa **Reemplazar** bajo cada pieza o **+ Añadir video / + Añadir imagen**.
+El botón **Evidencias** define qué verá el cliente:
 
-### Con enlaces (recomendado para videos largos)
+- **Servicio**: videos e imágenes de cada servicio de la cotización.
+- **General**: piezas de otros trabajos, elegidas del banco general.
+- **Ambas**: las dos cosas.
+- **Ocultar**: no se muestra ninguna evidencia en la versión cliente.
 
-Pega la URL de YouTube, Vimeo o un video directo (`.mp4`). YouTube y Vimeo se abren en un reproductor embebido; el resto se reproduce en el propio marco.
+**Modo cliente nuevo** cambia a `General` y, si no había selección, marca todo el banco; si ya había una selección, la conserva.
 
-### Con archivos locales
+Para sumar una pieza al banco general:
 
-1. Copia el archivo a `assets/media/<servicio>/`.
-2. En el diálogo, escribe la ruta relativa, por ejemplo `assets/media/metaads/metaads-1.mp4`.
+1. Copia el archivo a `docs/assets/media/general/`.
+2. En **Evidencias → + Video / + Imagen**, usa la ruta `assets/media/general/<archivo>`.
+3. También acepta enlaces de YouTube o Vimeo, y `https://` directos.
 
-> Si eliges un archivo con el botón "Elegir archivo del equipo", se verá al instante, pero el navegador no puede conservarlo al recargar (por seguridad). Para que quede fijo, guarda el archivo dentro de `assets/media/` y usa su ruta.
-
-Convención actual de nombres:
-
-```
-assets/media/
-  audiovisual/   audiovisual-1.mp4  audiovisual-1.jpg  audiovisual-1.png …
-  branding/      branding-1.mp4     branding-1.jpg     branding-1.png …
-  diseno/        …
-  metaads/       metaads-1.mp4      metaads-1.jpg      metaads-1.png …
-  redes/         …
-```
-
-Los posters (`-1.jpg`, `-2.jpg`) son las portadas de los videos; si cambias el video, conviene reemplazar también su poster.
-
-### Cambiar la evidencia por defecto
-
-Edita `js/catalog.js`: cada servicio tiene `videos` (con `src` y `poster`) e `images` (`src`). Es la vía más rápida si vas a reutilizar el mismo material en varias cotizaciones.
+El selector de archivo local solo sirve para previsualizar en esta sesión. Al exportar se bloquean los `blob:` y los videos `data:`; las imágenes incrustadas deben pesar menos de 1.5 MB. La evidencia durable siempre es un archivo dentro de `docs/assets/` o un enlace `https://`.
 
 ---
 
-## Exportar a PDF
+## 4. Publicar
 
-Pulsa **Exportar PDF** (o `Ctrl/Cmd + P`). En el diálogo de impresión:
+1. En la matriz, pulsa **Exportar cliente**.
+2. Revisa la URL y descarga el paquete `.json`.
+3. Arrastra el archivo sobre **`tools/Publicar cliente.command`** (o haz doble clic y elígelo).
+4. El ayudante escribe `docs/c/<slug>/index.html`, hace commit y `git push`.
+5. Al terminar imprime la URL y la copia al portapapeles. GitHub Pages puede tardar un minuto.
 
-- Destino: **Guardar como PDF**
-- Papel: **A4**
-- Márgenes: **Predeterminado**
-- Escala: **100 %** (no "Ajustar a la página")
-- **Gráficos en segundo plano: activado** (sin esto se pierden colores, barras y fondos)
+La primera exportación fija el slug del cliente. **Republicar conserva la misma URL**, actualiza la fecha de generación y guarda una versión en el historial.
 
-El documento sale en cuatro páginas: portada, alcance + proceso, evidencia, inversión + condiciones. Los saltos de página están definidos en `styles/print.css`; el diseño de pantalla está en `styles/app.css`.
-
-Si una cotización con varios servicios genera más capítulos, cada uno abre en página nueva y el pie de marca se imprime al final.
-
----
-
-## Importar y exportar datos
-
-En modo edición, al final de la sección **Condiciones**:
-
-- **Exportar datos**: descarga la cotización completa en JSON (útil como respaldo o para enviarla a otra persona).
-- **Importar datos**: carga un JSON exportado previamente.
-
-El JSON contiene `meta` (cliente, fecha, condiciones, pagos), `blocks` (servicios con alcance, evidencia e ítems) y `bank`.
-
----
-
-## Estructura del proyecto
-
-```
-index.html            Estructura del dashboard
-styles/app.css        Diseño de pantalla (tokens, layout, responsive)
-styles/print.css      Hoja A4 y paginación del PDF
-js/catalog.js         Catálogo de servicios + cotización inicial
-js/store.js           Persistencia, totales y formato (moneda, fechas)
-js/render.js          Plantillas de capítulos, inversión y condiciones
-js/app.js             Interacciones: edición, medios, import/export
-assets/fonts/         Newsreader + Archivo (self-hosted)
-assets/media/         Evidencia demo por servicio
-assets/logo-*.png     Logo de Pandora
-tools/art.html        Generador de las piezas demo (no se usa en producción)
-cotizacion.docx       Documento original de la cotización (solo referencia)
-```
-
-### Identidad gráfica
-
-Paleta: tinta `#28363B`, morado `#4600BB`, pasteles `#BFE0C8`, `#BFD3EA`, `#E6CBA6`, `#CBB8F0`, papel `#F8F7F5`. Tipografías: **Newsreader** para títulos y **Archivo** para interfaz y datos.
-
-Todo se define como variables CSS al inicio de `styles/app.css`.
-
----
-
-## Publicar en GitHub Pages
-
-El dashboard no requiere build: se publica la rama `main` tal cual.
+El comando también acepta:
 
 ```bash
-git init -b main
-git add .
-git commit -m "Cotizador Pandora: dashboard de cotización"
-gh repo create cotizacion-pandora --public --source=. --remote=origin --push
-gh api -X POST repos/FelipeFLV/cotizacion-pandora/pages \
-  -f source[branch]=main -f source[path]=/
+node tools/publicar.mjs paquete.json --dry-run   # escribe la página sin tocar git
+node tools/publicar.mjs paquete.json --no-push   # commit local, sin subir
+node tools/publicar.mjs paquete.json --open      # abre la URL al terminar
 ```
 
-La URL queda como `https://felipeflv.github.io/cotizacion-pandora/` (tarda uno o dos minutos en activarse).
-
-Con el flujo manual: crear el repo en GitHub, `git remote add origin …`, `git push -u origin main` y en **Settings → Pages** elegir *Deploy from a branch* → `main` → `/ (root)`.
-
-> El repositorio es público y la URL se puede compartir con quien quieras. La página lleva `noindex, nofollow`, así que no aparece en buscadores, pero cualquiera con el enlace puede verla. Evita el nombre del cliente en el nombre del repo.
-
-Cada cambio futuro se publica con `git add . && git commit -m "…" && git push`; Pages se actualiza solo.
+Si el paquete trae un medio inexistente, un esquema inseguro o un slug que ya pertenece a otro cliente, el ayudante se detiene y no borra el paquete.
 
 ---
 
-## Notas
+## 5. Retirar una publicación
 
-- La evidencia incluida es material de muestra generado para esta demo; reemplázala con piezas reales antes de enviar una cotización.
-- Los datos de la empresa (RUC, cuentas, contacto) están en el HTML y en `js/catalog.js` (`bank`). Revísalos si cambian.
-- No hay backend ni analítica: nada sale del equipo del usuario.
+1. **Cotizaciones → Retirar** en la cotización publicada.
+2. Se descarga un paquete `pandora-retiro-…json`.
+3. Arrástralo sobre el mismo `.command`.
+
+La URL deja de existir (404), pero la cotización y su historial siguen en la biblioteca local. Retirar es distinto de eliminar.
+
+---
+
+## 6. Historial
+
+- **Local**: cada exportación guarda un snapshot con fecha y hora. **Historial → Restaurar** vuelve a una versión anterior. Se conservan las últimas 10.
+- **Git**: cada publicación es un commit; el historial completo queda en el repo.
+
+Restaurar no cambia la URL publicada hasta que vuelvas a exportar.
+
+---
+
+## 7. Privacidad y límites
+
+El repo es público y las páginas no tienen contraseña. La protección es:
+
+- URL no adivinable: `/c/<slug>/` con un sufijo aleatorio.
+- `<meta name="robots" content="noindex, nofollow, noarchive">` y `docs/robots.txt` con `Disallow: /`.
+
+Eso evita que Google las indexe, pero **cualquiera con el enlace puede abrirla**. Para material confidencial hace falta otro hosting con autenticación (por ejemplo, un sitio privado o un enlace firmado con caducidad).
+
+La matriz nunca se publica: GitHub Pages sirve únicamente la carpeta `docs/`.
+
+---
+
+## 8. Solución de problemas
+
+| Problema | Qué hacer |
+| --- | --- |
+| `git push` rechazado | Revisa conexión y permisos del repo. El commit local queda hecho; vuelve a ejecutar el comando o haz `git push`. |
+| La URL tarda en cambiar | GitHub Pages tarda hasta un minuto. Recarga con caché limpia. |
+| “No existe el medio …” | Copia el archivo a la ruta indicada dentro de `docs/assets/` o usa un enlace `https://`. |
+| La biblioteca aparece vacía | Los datos del navegador se borraron. Importa tu respaldo JSON. |
+| El `.command` no abre | `chmod +x "tools/Publicar cliente.command"` y vuelve a intentar. |
+| Quiero revisar antes de publicar | Usa `--dry-run` y abre `docs/c/<slug>/index.html` con un servidor local. |
+
+---
+
+## 9. Estructura del repo
+
+| Ruta | Qué es | ¿Se publica? |
+| --- | --- | --- |
+| `index.html` | Matriz privada | No |
+| `js/` | Lógica de la matriz | No |
+| `docs/c/<slug>/` | Versiones cliente | Sí |
+| `docs/app/` | CSS y JS compartido | Sí |
+| `docs/assets/` | Logos, fuentes y medios (~6 MB) | Sí |
+| `docs/index.html` | Redirección de la URL antigua a H&S | Sí |
+| `docs/robots.txt`, `docs/.nojekyll` | Control de indexación y despliegue | Sí |
+| `tools/` | Generador, plantilla y `.command` | Sí (no se sirve como página) |
+| `specs/` | Diseño y plan de la migración | No (local) |
+| `tests/` | Pruebas unitarias y E2E | Sí |
+
+GitHub Pages debe estar configurado en **Settings → Pages → Source: `main` / `/docs`**.
+
+---
+
+## 10. Pruebas
+
+```bash
+node --test tests/*.test.mjs   # unitarias
+node tests/e2e.mjs             # matriz, biblioteca, evidencias, cliente y exportación
+```
+
+El E2E levanta un servidor local en un puerto libre y limpia `docs/c/_e2e*` y `tests/tmp/` al terminar. No escribe en git.

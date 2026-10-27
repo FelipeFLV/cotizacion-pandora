@@ -7,6 +7,7 @@ const P = require('../docs/app/core.js');
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const QUOTE_ID_RE = /name="pandora-quote-id" content="([^"]*)"/;
+const LEGACY_PAGE_ID = 'q_legacy_hs';
 
 const MEDIA_REASON = {
   blob: 'es un archivo temporal de esta sesión',
@@ -119,7 +120,7 @@ export function prepareClient({ repoRoot, pkg, templatePath, base = '../../', fo
   const quoteId = pkg.quote.id || slug;
 
   const current = existingQuoteId(file);
-  if (current && current !== quoteId && !force) {
+  if (current && current !== quoteId && current !== LEGACY_PAGE_ID && !force) {
     throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa otro slug o --force.`);
   }
 
@@ -147,7 +148,7 @@ export function retireClient({ repoRoot, pkg, force = false, dryRun = false }) {
   if (!existsSync(dir)) throw new Error(`No existe la publicación "${slug}".`);
 
   const current = existingQuoteId(path.join(dir, 'index.html'));
-  if (current && pkg.quoteId && current !== pkg.quoteId && !force) {
+  if (current && pkg.quoteId && current !== pkg.quoteId && current !== LEGACY_PAGE_ID && !force) {
     throw new Error(`El slug "${slug}" ya pertenece a otra cotización. Usa --force para retirarla igual.`);
   }
 

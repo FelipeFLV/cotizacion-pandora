@@ -254,6 +254,8 @@
     };
   }
 
+  const LEGACY_HS_SLUG = 'h-s-inmobiliaria-7k2m';
+
   function defaultQuote() {
     return {
       version: 2,
@@ -273,7 +275,7 @@
           { label: 'Al mes siguiente', pct: 40 }
         ],
         closing: 'Estamos listos para empezar cuando tú lo estés. Cualquier ajuste al alcance se conversa antes de la firma.',
-        slug: '',
+        slug: LEGACY_HS_SLUG,
         generatedAt: '',
         publishedUrl: '',
         publishedAt: '',
@@ -341,6 +343,7 @@
   return {
     catalog,
     blockFromService,
+    LEGACY_HS_SLUG,
     defaultQuote,
     newQuote,
     seedEvidenceBank,

@@ -99,6 +99,20 @@ test('collision with another quote id throws', () => {
   assert.match(readFileSync(file, 'utf8'), /content="q_test"/);
 });
 
+test('the legacy H&S page can be replaced once', () => {
+  const repoRoot = tempRepo();
+  const pkg = loadPackage('cliente.json');
+  touchAssets(repoRoot, pkg);
+  mkdirSync(path.join(repoRoot, 'docs/c/demo'), { recursive: true });
+  writeFileSync(
+    path.join(repoRoot, 'docs/c/demo/index.html'),
+    '<meta name="pandora-quote-id" content="q_legacy_hs">'
+  );
+
+  const { file } = prepareClient({ repoRoot, pkg, templatePath });
+  assert.match(readFileSync(file, 'utf8'), /content="q_test"/);
+});
+
 test('missing asset throws with title and path', () => {
   const repoRoot = tempRepo();
   const pkg = loadPackage('cliente.json');

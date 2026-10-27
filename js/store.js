@@ -54,7 +54,8 @@
       ? quote.evidence
       : { mode: 'service', generalIds: { videos: [], images: [] } };
     quote.meta = quote.meta || {};
-    quote.meta.slug = quote.meta.slug || '';
+    quote.meta.slug = quote.meta.slug
+      || (!quote.meta.client || quote.meta.client === 'H&S Inmobiliaria' ? C.LEGACY_HS_SLUG : '');
     quote.meta.generatedAt = quote.meta.generatedAt || '';
     quote.meta.publishedUrl = quote.meta.publishedUrl || '';
     quote.meta.publishedAt = quote.meta.publishedAt || '';

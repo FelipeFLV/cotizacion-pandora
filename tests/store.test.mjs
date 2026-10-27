@@ -39,6 +39,7 @@ test('migrates the old single quote', () => {
   assert.equal(lib.quotes[0].quote.version, 2);
   assert.equal(lib.quotes[0].quote.evidence.mode, 'service');
   assert.equal(lib.quotes[0].quote.blocks[0].serviceName, 'Meta Ads');
+  assert.equal(lib.quotes[0].quote.meta.slug, P.LEGACY_HS_SLUG, 'la cotización heredada conserva su slug');
   assert.equal(storage.has(P.library.OLD_KEY), false);
   assert.equal(storage.has(P.library.KEY), true);
 });
