@@ -5,6 +5,8 @@
   const esc = (str) => String(str == null ? '' : str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+  const asset = (src) => (P.assetUrl ? P.assetUrl(src, P.assetBase) : src);
+
   const ed = (path, value, cls) =>
     `<span class="editable${cls ? ' ' + cls : ''}" data-text="${path}">${esc(value)}</span>`;
 
@@ -122,7 +124,7 @@
             <figure class="shot shot-${vi % 2 === 0 ? 'a' : 'b'}" data-video data-block="${bi}" data-index="${vi}">
               <div class="shot-frame">
                 ${video.poster
-                  ? `<img src="${esc(video.poster)}" alt="" loading="lazy" draggable="false">`
+                  ? `<img src="${esc(asset(video.poster))}" alt="" loading="lazy" draggable="false">`
                   : `<div class="shot-empty">Sin portada</div>`}
                 <button class="play" data-action="play-video" data-block="${bi}" data-index="${vi}"
                         aria-label="Reproducir ${esc(video.title || 'video')}">
@@ -141,7 +143,7 @@
             <figure class="still" data-image>
               <button class="still-link" data-action="lightbox" data-block="${bi}" data-index="${ii}"
                       aria-label="Ampliar ${esc(image.title || 'pieza')}">
-                <img src="${esc(image.src)}" alt="${esc(image.title || '')}" loading="lazy" draggable="false">
+                <img src="${esc(asset(image.src))}" alt="${esc(image.title || '')}" loading="lazy" draggable="false">
               </button>
               <figcaption class="shot-cap">
                 ${ed(`blocks.${bi}.images.${ii}.title`, image.title)}

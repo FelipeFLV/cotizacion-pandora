@@ -236,7 +236,7 @@
     if (embed) {
       frame.innerHTML = `<iframe src="${embed}" title="${P.render.esc(video.title)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
     } else {
-      frame.innerHTML = `<video src="${P.render.esc(video.src)}" poster="${P.render.esc(video.poster || '')}" controls autoplay playsinline></video>`;
+      frame.innerHTML = `<video src="${P.render.esc(P.assetUrl(video.src, P.assetBase))}" poster="${P.render.esc(P.assetUrl(video.poster || '', P.assetBase))}" controls autoplay playsinline></video>`;
     }
     figure.classList.add('is-playing');
   }
@@ -244,7 +244,7 @@
   function openLightbox(blockIndex, index) {
     const image = quote.blocks[blockIndex].images[index];
     if (!image || !image.src) return;
-    $('#lbImg').src = image.src;
+    $('#lbImg').src = P.assetUrl(image.src, P.assetBase);
     $('#lbImg').alt = image.title || '';
     $('#lbCap').textContent = image.title || '';
     const box = $('#lightbox');
