@@ -1,0 +1,336 @@
+/* ==========================================================================
+   Hoja de impresión — A4. El PDF se genera con el diálogo del navegador.
+   ========================================================================== */
+
+@page {
+  size: A4;
+  margin: 16mm 15mm 20mm;
+}
+
+@media print {
+  :root {
+    --paper: #FFFFFF;
+    --paper-2: #F6F5F3;
+    --paper-3: #EFEEEB;
+  }
+
+  html { font-size: 10.5pt; }
+
+  body {
+    background: #fff;
+    color: var(--ink);
+    font-size: 10pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-only { display: flex !important; }
+  .topbar,
+  .topnav,
+  .topbar-actions,
+  .scroll-hint,
+  .edit-hint,
+  .edit-only,
+  .work-foot,
+  .add-service,
+  .site-foot,
+  .toast,
+  .lightbox,
+  .sheet,
+  .play,
+  .shot-tag,
+  .row-remove,
+  .add-entry,
+  .add-line,
+  .mini,
+  .copy,
+  .skip-link {
+    display: none !important;
+  }
+
+  /* pie del documento */
+  .print-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-top: 8mm;
+    padding-top: 4mm;
+    border-top: .4pt solid rgba(40, 54, 59, .2);
+  }
+  .print-foot img { width: 42mm; height: auto; }
+  .print-foot-lines { text-align: right; }
+  .print-foot-lines p {
+    margin: 0;
+    font-size: 7.5pt;
+    color: #7C8B90;
+    line-height: 1.7;
+  }
+
+  /* ---------- portada ---------- */
+
+  .hero {
+    min-height: auto;
+    padding: 0 0 4mm;
+    display: block;
+    overflow: visible;
+  }
+  .hero::before {
+    width: 190mm;
+    height: 190mm;
+    right: -80mm;
+    top: -70mm;
+    filter: none;
+    opacity: .45;
+    background: radial-gradient(circle at 40% 40%, rgba(191, 224, 200, .8), rgba(191, 211, 234, .5) 40%, rgba(203, 184, 240, .28) 58%, transparent 70%);
+  }
+  .hero::after { display: none; }
+  .hero-motif {
+    width: 92mm;
+    top: 6mm;
+    right: -6mm;
+    opacity: .08;
+  }
+  .hero-inner {
+    display: block;
+    max-width: none;
+  }
+  .hero-copy > *, .docket {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+  .print-brand {
+    width: 46mm;
+    height: auto;
+    margin-bottom: 20mm;
+  }
+  .doc-meta { margin-bottom: 13mm; font-size: 9pt; }
+  .for { font-size: 9.5pt; margin-bottom: 3mm; }
+  .client {
+    font-size: 52pt;
+    line-height: 1;
+    max-width: 150mm;
+  }
+  .lede { font-size: 14.5pt; margin-top: 7mm; max-width: 120mm; }
+  .hero-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 15mm;
+    padding-top: 4mm;
+    gap: 4mm 8mm;
+    max-width: 150mm;
+  }
+  .hero-facts dt { font-size: 8pt; }
+  .hero-facts dd { font-size: 9.5pt; }
+
+  .docket {
+    margin-top: 22mm;
+    max-width: 124mm;
+    padding: 8mm 8mm 0;
+    box-shadow: none;
+    border: .5pt solid rgba(40, 54, 59, .18);
+  }
+  .docket-perf { margin: 5mm -7mm 4mm; }
+  .docket-perf,
+  .docket-foot { margin-left: -7mm; margin-right: -7mm; }
+  .docket-total { font-size: 26pt; }
+  .docket-foot { padding: 3mm 7mm; }
+  .stamp { font-size: 7pt; }
+
+  .cover-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-top: 46mm;
+    padding-top: 3.5mm;
+    border-top: .6pt solid rgba(40, 54, 59, .55);
+  }
+  .cover-foot > div { display: grid; gap: 1.5mm; align-content: start; }
+  .cover-foot dt { font-size: 7.5pt; color: #7C8B90; }
+  .cover-foot dd { margin: 0; font-size: 9pt; }
+
+  /* ---------- secciones ---------- */
+
+  .section {
+    max-width: none;
+    padding: 0 0 8mm;
+    margin: 0;
+  }
+  .section-head {
+    margin-bottom: 7mm;
+    padding-top: 3mm;
+    grid-template-columns: 10mm auto 1fr auto;
+    gap: 4mm;
+    border-top: .6pt solid rgba(40, 54, 59, .55);
+  }
+  .section-head h2 { font-size: 17pt; }
+  .section-head .num { font-size: 8pt; color: var(--purple); }
+  .head-rule { background: rgba(40, 54, 59, .16); }
+  .head-note { font-size: 8pt; }
+
+  .scope-grid {
+    grid-template-columns: 45fr 55fr;
+    gap: 10mm;
+  }
+  .scope-intro { position: static; }
+  .scope-title { font-size: 19pt; margin-bottom: 3mm; max-width: none; }
+  .scope-tagline { font-size: 11pt; }
+  .scope-badge { display: none; }
+
+  .deliv {
+    font-size: 9.5pt;
+    padding: 2.6mm 0;
+    grid-template-columns: 4mm 1fr;
+  }
+  .bullet { width: 2.4mm; height: 2.4mm; margin-top: 1.6mm; }
+  .notes { margin-top: 6mm; }
+  .note { font-size: 8.5pt; line-height: 1.45; }
+  .notes h4 { font-size: 8pt; margin-bottom: 2mm; }
+
+  .section-scope, .section-work { break-before: page; }
+  .section-work { break-inside: avoid; }
+  .work-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5mm 4mm;
+  }
+  .shot-a { grid-column: span 2; }
+  .shot-b { margin-top: 0; }
+  .shot-frame {
+    aspect-ratio: 16 / 9;
+    height: auto;
+    box-shadow: none;
+    border: .4pt solid rgba(40, 54, 59, .14);
+  }
+  .still-link { aspect-ratio: 4 / 5; height: auto; }
+  .shot-cap { font-size: 8pt; margin-top: 2mm; }
+
+  /* proceso y resumen del alcance */
+  .process {
+    margin-top: 8mm;
+    padding-top: 4mm;
+    break-inside: avoid;
+  }
+  .process h4 { font-size: 8pt; margin-bottom: 3mm; }
+  .process ol { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6mm 12mm; }
+  .step-num { font-size: 7pt; }
+  .step-title { font-size: 11.5pt; margin: 1mm 0 1.5mm; }
+  .step-detail { font-size: 8pt; line-height: 1.45; }
+
+  .print-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4mm;
+    margin-top: 18mm;
+    padding-top: 4mm;
+    border-top: .6pt solid rgba(40, 54, 59, .55);
+  }
+  .print-stats > div { display: grid; gap: 1.5mm; align-content: start; }
+  .print-stats > div > span { font-size: 7.5pt; color: #7C8B90; }
+  .print-stats .stat-tax { font-size: 8pt; color: #7C8B90; margin-left: 1.5mm; }
+  .print-stats strong {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 15pt;
+    letter-spacing: -.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .work-note {
+    display: block !important;
+    margin: 8mm 0 0;
+    padding-top: 3mm;
+    border-top: .4pt solid rgba(40, 54, 59, .16);
+    font-size: 8pt;
+    color: #7C8B90;
+  }
+
+  /* ---------- inversión ---------- */
+
+  .section-invest { break-before: page; }
+  .section-terms { break-before: auto; padding-top: 12mm; }
+  .section-invest::before { display: none; }
+  .invest-grid { grid-template-columns: 62fr 38fr; gap: 10mm; }
+  .terms { position: static; gap: 7mm; grid-template-columns: 1fr; }
+  .price-sheet {
+    padding: 6mm;
+    box-shadow: none;
+    border: .5pt solid rgba(40, 54, 59, .16);
+    break-inside: avoid;
+  }
+  .price-group + .price-group { margin-top: 6mm; }
+  .price-name { font-size: 9.5pt; }
+  .price-amt { font-size: 9.5pt; }
+  .price-amt .cur { font-size: 7.5pt; }
+  .amt { width: auto; padding: 0; background: none !important; }
+  .price-row { padding: 3.6mm 0; grid-template-columns: auto minmax(10mm, 1fr) auto; }
+  .leader { margin-bottom: 1.4mm; }
+  .totals { margin-top: 9mm; padding-top: 4mm; }
+  .total-row { font-size: 9pt; }
+  .total-row.grand { font-size: 18pt; }
+  .total-row.grand span:first-child { font-size: 9pt; }
+
+  .terms-block { break-inside: avoid; }
+  .terms-block h3 { font-size: 8pt; }
+  .paylist li { font-size: 8.5pt; padding: 1.6mm 0; grid-template-columns: 10mm minmax(0, 1fr) auto; }
+  .pay-pct { white-space: nowrap; }
+  .pay-amt { font-size: 8pt; }
+  .pct-input { width: 2.6ch; background: none !important; padding: 0; }
+  .bank-row { font-size: 8pt; padding: 1.4mm 0; grid-template-columns: minmax(0, 1fr) auto; }
+  .bank-row dd { font-size: 8pt; }
+  .bank-row dt { font-size: 8pt; }
+  .paybar { height: 2.5mm; }
+  .bank-note { font-size: 7.5pt; }
+
+  /* ---------- condiciones ---------- */
+
+  .section-terms { break-before: auto; padding-top: 12mm; }
+  .terms-grid { grid-template-columns: 58fr 42fr; gap: 10mm; }
+  .conditions li { font-size: 8.8pt; padding: 3.4mm 0; grid-template-columns: 8mm 1fr; }
+  .cond-index { font-size: 7.5pt; }
+  .closing-note { font-size: 15pt; }
+  .signature { margin-top: 12mm; padding-top: 3mm; }
+  .sig-name { font-size: 11pt; }
+  .sig-role { font-size: 8pt; }
+
+  a { text-decoration: none; }
+  .foot-meta a, .bank-note a { border: 0; }
+
+  /* ---------- densidad de impresión ---------- */
+
+  html { font-size: 11pt; }
+  body { font-size: 10.5pt; }
+
+  .section-head { margin-bottom: 10mm; padding-top: 3.5mm; }
+  .section-head h2 { font-size: 19pt; }
+  .section { padding-bottom: 10mm; }
+
+  .scope-title { font-size: 24pt; }
+  .scope-tagline { font-size: 12.5pt; }
+  .deliv { font-size: 10.5pt; padding: 4.4mm 0; }
+  .notes { margin-top: 11mm; }
+  .note { font-size: 9.5pt; line-height: 1.55; }
+
+  .process { margin-top: 14mm; }
+  .process h4 { font-size: 8.5pt; margin-bottom: 4mm; }
+  .step-title { font-size: 13.5pt; margin: 1.5mm 0 2mm; }
+  .step-detail { font-size: 9.2pt; line-height: 1.55; }
+
+  .print-stats { margin-top: 16mm; }
+
+  .shot-cap { font-size: 8.5pt; }
+  .work-note { font-size: 8.5pt; margin-top: 10mm; }
+
+  .price-name, .price-amt { font-size: 10.5pt; }
+  .price-row { padding: 4.2mm 0; }
+  .total-row { font-size: 9.5pt; }
+  .total-row.grand { font-size: 21pt; }
+  .terms-block h3 { font-size: 8.5pt; }
+  .paylist li { font-size: 9.5pt; padding: 2.2mm 0; }
+  .bank-row { font-size: 9pt; padding: 2mm 0; }
+  .bank-row dt { font-size: 8.5pt; }
+
+  .conditions li { font-size: 9.5pt; padding: 4mm 0; }
+  .closing-note { font-size: 16pt; }
+  .print-foot { margin-top: 12mm; }
+}
