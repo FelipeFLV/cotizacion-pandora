@@ -124,6 +124,9 @@
       }
 
       normalize(lib);
+      if (!lib.evidenceBank.videos.length && !lib.evidenceBank.images.length) {
+        lib.evidenceBank = C.seedEvidenceBank();
+      }
       library.save(lib, store);
       if (migratedOld && store && store.removeItem) store.removeItem(OLD_KEY);
       return lib;

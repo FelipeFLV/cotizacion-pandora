@@ -30,6 +30,11 @@
   </nav>
 
   <div class="topbar-actions">
+    <button class="btn ghost" data-action="open-evidence" aria-haspopup="dialog" aria-label="Evidencias">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 12 2.5 2.5L15 11l3 3"/><circle cx="8" cy="9" r="1.2"/></svg>
+      <span>Evidencias</span>
+      <span class="count" data-evidence-count hidden>0</span>
+    </button>
     <button class="btn ghost" data-action="open-library" aria-haspopup="dialog" aria-label="Cotizaciones guardadas">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
       <span>Cotizaciones</span>
@@ -244,11 +249,15 @@
 
 <dialog class="sheet" id="mediaDialog">
   <form method="dialog" class="sheet-form" id="mediaForm">
-    <h2 class="sheet-title">Reemplazar pieza</h2>
+    <h2 class="sheet-title" id="mediaTitle">Reemplazar pieza</h2>
     <p class="sheet-sub" id="mediaHint">Pega una ruta del proyecto o un enlace de YouTube, Vimeo o un video directo.</p>
     <label class="field">
       <span>Título de la pieza</span>
       <input name="title" type="text" autocomplete="off">
+    </label>
+    <label class="field" id="mediaServiceField" hidden>
+      <span>Servicio</span>
+      <select name="service"></select>
     </label>
     <label class="field">
       <span>Ruta o enlace</span>
@@ -278,6 +287,47 @@
     <div class="service-picker" id="servicePicker"></div>
     <div class="sheet-actions">
       <button class="btn ghost" data-action="close-service">Cancelar</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet sheet-wide" id="evidenceDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Evidencias</h2>
+    <p class="sheet-sub">Lo que verá el cliente en la versión publicada.</p>
+
+    <div class="mode-switch" role="group" aria-label="Qué evidencia mostrar">
+      <button data-action="evidence-mode" data-mode="service">Servicio</button>
+      <button data-action="evidence-mode" data-mode="general">General</button>
+      <button data-action="evidence-mode" data-mode="both">Ambas</button>
+      <button data-action="evidence-mode" data-mode="none">Ocultar</button>
+    </div>
+
+    <div class="evidence-meta">
+      <button class="btn small ghost" data-action="toggle-new-client" aria-pressed="false">Modo cliente nuevo</button>
+      <p class="evidence-note" id="evidenceModeNote" hidden>No se mostrará evidencia en la versión cliente.</p>
+    </div>
+
+    <div class="evidence-grid">
+      <section class="evidence-col">
+        <h3>Banco general <span class="count" data-bank-count>0</span></h3>
+        <p class="evidence-help">Piezas de otros trabajos que puedes reutilizar.</p>
+        <div id="bankList"></div>
+        <div class="evidence-add">
+          <button class="btn small ghost" data-action="add-bank" data-kind="videos">+ Video</button>
+          <button class="btn small ghost" data-action="add-bank" data-kind="images">+ Imagen</button>
+        </div>
+      </section>
+
+      <section class="evidence-col">
+        <h3>En esta cotización</h3>
+        <p class="evidence-help">Marca las piezas que acompañan esta propuesta.</p>
+        <div id="evidenceSelection"></div>
+      </section>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn primary" data-action="close-evidence">Listo</button>
     </div>
   </div>
 </dialog>

@@ -296,6 +296,32 @@
     };
   }
 
+  function seedEvidenceBank() {
+    const bank = { videos: [], images: [] };
+    Object.values(catalog).forEach((service) => {
+      const video = (service.videos || [])[0];
+      if (video) {
+        bank.videos.push({
+          id: uid('e'),
+          title: `${service.name} — ${video.title}`,
+          src: video.src,
+          poster: video.poster || '',
+          service: service.name
+        });
+      }
+      const image = (service.images || [])[0];
+      if (image) {
+        bank.images.push({
+          id: uid('e'),
+          title: `${service.name} — ${image.title}`,
+          src: image.src,
+          service: service.name
+        });
+      }
+    });
+    return bank;
+  }
+
   function newQuote(serviceId) {
     const quote = defaultQuote();
     quote.meta.client = 'Cliente sin nombre';
@@ -317,6 +343,7 @@
     blockFromService,
     defaultQuote,
     newQuote,
+    seedEvidenceBank,
     clone
   };
 });

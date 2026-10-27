@@ -46,6 +46,7 @@
     P.render.all(quote);
     applyEditMode();
     observeSections();
+    updateEvidenceBadge();
   }
 
   function refreshPrices() {
@@ -269,15 +270,29 @@
   function openMediaDialog(context) {
     mediaCtx = context;
     const form = $('#mediaForm');
-    const item = context.index != null
-      ? get(quote, `blocks.${context.block}.${context.kind}.${context.index}`)
-      : { title: '', src: '' };
+    const bank = !!context.bank;
+    const list = bank ? store.lib.evidenceBank[context.kind] : get(quote, `blocks.${context.block}.${context.kind}`);
+    const item = context.index != null ? list[context.index] : { title: '', src: '' };
+
     form.reset();
     form.title.value = item.title || '';
     form.src.value = item.src || '';
+    $('#mediaTitle').textContent = context.index == null
+      ? (bank ? 'Añadir pieza al banco' : 'Añadir pieza')
+      : (bank ? 'Reemplazar pieza del banco' : 'Reemplazar pieza');
+    $('#mediaServiceField').hidden = !bank;
+    if (bank) {
+      form.service.innerHTML = Object.values(P.catalog)
+        .map((service) => `<option value="${esc(service.name)}">${esc(service.name)}</option>`)
+        .join('') + '<option value="General">General</option>';
+      form.service.value = item.service || 'General';
+    }
     $('#mediaHint').textContent = context.kind === 'videos'
       ? 'Ruta local, enlace de YouTube o Vimeo, o un video directo .mp4.'
       : 'Ruta local o enlace directo a la imagen.';
+    $('#mediaWarn').innerHTML = bank
+      ? 'El archivo se verá ahora, pero para publicarlo cópialo a la carpeta <code>docs/assets/media/general/</code> y usa su ruta.'
+      : 'El archivo se verá ahora, pero para publicarlo guárdalo en la carpeta <code>docs/assets/media/</code> y usa su ruta.';
     $('#mediaWarn').hidden = true;
     $('#mediaDelete').hidden = context.index == null;
     $('#mediaDialog').showModal();
@@ -297,6 +312,29 @@
       return false;
     }
     const title = form.title.value.trim() || (mediaCtx.kind === 'videos' ? 'Pieza audiovisual' : 'Pieza de diseño');
+
+    if (mediaCtx.bank) {
+      const list = store.lib.evidenceBank[mediaCtx.kind];
+      const service = (form.service && form.service.value) || 'General';
+      const poster = () => (mediaCtx.kind === 'videos' && !file && !P.render.embedUrl(src) ? '' : '');
+      if (mediaCtx.index != null) {
+        const current = list[mediaCtx.index];
+        list[mediaCtx.index] = {
+          ...current,
+          title,
+          src,
+          service,
+          poster: current.src === src ? current.poster || '' : poster()
+        };
+      } else {
+        list.push({ id: P.uid('e'), title, src, service, poster: poster() });
+      }
+      saveNow();
+      renderEvidence();
+      $('#mediaDialog').close();
+      return true;
+    }
+
     const list = get(quote, `blocks.${mediaCtx.block}.${mediaCtx.kind}`);
     if (mediaCtx.index != null) {
       const current = list[mediaCtx.index];
@@ -319,12 +357,117 @@
 
   function deleteMedia() {
     if (!mediaCtx || mediaCtx.index == null) return;
+
+    if (mediaCtx.bank) {
+      const piece = store.lib.evidenceBank[mediaCtx.kind][mediaCtx.index];
+      if (!piece) return;
+      P.library.removeBankPiece(store.lib, mediaCtx.kind, piece.id);
+      saveNow();
+      refresh();
+      renderEvidence();
+      $('#mediaDialog').close();
+      toast('Pieza quitada del banco.');
+      return;
+    }
+
     const list = get(quote, `blocks.${mediaCtx.block}.${mediaCtx.kind}`);
     list.splice(mediaCtx.index, 1);
     saveNow();
     refresh();
     $('#mediaDialog').close();
     toast('Pieza eliminada.');
+  }
+
+  /* ---------- evidencias ---------- */
+
+  function ensureEvidence() {
+    if (!quote.evidence) quote.evidence = { mode: 'service', generalIds: { videos: [], images: [] } };
+    const ev = quote.evidence;
+    if (!ev.mode) ev.mode = 'service';
+    ev.generalIds = ev.generalIds || {};
+    ['videos', 'images'].forEach((kind) => {
+      if (!Array.isArray(ev.generalIds[kind])) ev.generalIds[kind] = [];
+    });
+  }
+
+  function updateEvidenceBadge() {
+    ensureEvidence();
+    const total = quote.evidence.generalIds.videos.length + quote.evidence.generalIds.images.length;
+    $$('[data-evidence-count]').forEach((el) => {
+      el.textContent = String(total);
+      el.hidden = total === 0;
+    });
+  }
+
+  function bankThumb(kind, piece) {
+    const src = kind === 'videos' ? (piece.poster || '') : (piece.src || '');
+    if (!src) {
+      return `<span class="bank-thumb bank-thumb-empty" aria-hidden="true">${kind === 'videos' ? '▶' : '▢'}</span>`;
+    }
+    return `<img class="bank-thumb" src="${esc(P.assetUrl(src, P.assetBase))}" alt="" loading="lazy">`;
+  }
+
+  function renderEvidence() {
+    ensureEvidence();
+    const bank = store.lib.evidenceBank;
+    const ev = quote.evidence;
+    const kindLabel = (kind) => (kind === 'videos' ? 'Videos' : 'Imágenes');
+
+    $('#bankList').innerHTML = ['videos', 'images'].map((kind) => {
+      const list = bank[kind] || [];
+      return `<div class="bank-group">
+        <h4>${kindLabel(kind)} <span class="muted">${list.length}</span></h4>
+        ${list.length ? list.map((piece, index) => `
+          <div class="bank-row" data-bank-kind="${kind}" data-index="${index}" data-id="${esc(piece.id)}">
+            ${bankThumb(kind, piece)}
+            <span class="bank-body">
+              <span class="bank-title">${esc(piece.title)}</span>
+              <span class="bank-meta">${esc(piece.service || 'General')}</span>
+            </span>
+            <span class="bank-actions">
+              <button class="mini" data-action="edit-bank" data-kind="${kind}" data-index="${index}">Reemplazar</button>
+              <button class="mini danger" data-action="remove-bank" data-kind="${kind}" data-index="${index}">Quitar</button>
+            </span>
+          </div>`).join('') : '<p class="bank-empty">Sin piezas.</p>'}
+      </div>`;
+    }).join('');
+
+    $('#evidenceSelection').innerHTML = ['videos', 'images'].map((kind) => {
+      const list = bank[kind] || [];
+      const selected = ev.generalIds[kind] || [];
+      return `<div class="bank-group">
+        <h4>${kindLabel(kind)} <span class="muted">${selected.length}/${list.length}</span></h4>
+        ${list.length ? `<div class="select-actions">
+          <button class="mini" data-action="select-all" data-kind="${kind}">Seleccionar todo</button>
+          <button class="mini" data-action="select-none" data-kind="${kind}">Ninguna</button>
+        </div>
+        <div class="evidence-checks">
+          ${list.map((piece) => `<label class="check-row">
+            <input type="checkbox" data-evidence-kind="${kind}" value="${esc(piece.id)}"${selected.includes(piece.id) ? ' checked' : ''}>
+            <span>${esc(piece.title)}</span>
+          </label>`).join('')}
+        </div>` : '<p class="bank-empty">Agrega piezas al banco.</p>'}
+      </div>`;
+    }).join('');
+
+    $$('[data-mode]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.mode === ev.mode));
+    });
+    $('[data-action="toggle-new-client"]').setAttribute('aria-pressed', String(ev.mode === 'general'));
+    $('#evidenceModeNote').hidden = ev.mode !== 'none';
+    $('[data-bank-count]').textContent = String((bank.videos || []).length + (bank.images || []).length);
+    updateEvidenceBadge();
+  }
+
+  function removeBank(kind, index) {
+    const piece = (store.lib.evidenceBank[kind] || [])[index];
+    if (!piece) return;
+    if (!confirm(`¿Quitar “${piece.title}” del banco? También se quitará de las cotizaciones que la usan.`)) return;
+    P.library.removeBankPiece(store.lib, kind, piece.id);
+    saveNow();
+    refresh();
+    renderEvidence();
+    toast('Pieza quitada del banco.');
   }
 
   /* ---------- biblioteca ---------- */
@@ -552,7 +695,52 @@
       toast('Cotización eliminada de este navegador.');
     },
     'backup-library'() { backupLibrary(); },
-    'import-library'() { $('#libraryFile').click(); }
+    'import-library'() { $('#libraryFile').click(); },
+    'open-evidence'() {
+      renderEvidence();
+      $('#evidenceDialog').showModal();
+    },
+    'close-evidence'() { $('#evidenceDialog').close(); },
+    'evidence-mode'() {
+      ensureEvidence();
+      quote.evidence.mode = this.dataset.mode;
+      saveNow();
+      refresh();
+      renderEvidence();
+    },
+    'toggle-new-client'() {
+      ensureEvidence();
+      const ev = quote.evidence;
+      if (ev.mode === 'general') {
+        ev.mode = 'service';
+      } else {
+        ev.mode = 'general';
+        const bank = store.lib.evidenceBank;
+        if (!ev.generalIds.videos.length && !ev.generalIds.images.length) {
+          ev.generalIds.videos = (bank.videos || []).map((piece) => piece.id);
+          ev.generalIds.images = (bank.images || []).map((piece) => piece.id);
+        }
+      }
+      saveNow();
+      refresh();
+      renderEvidence();
+    },
+    'add-bank'() { openMediaDialog({ bank: true, kind: this.dataset.kind }); },
+    'edit-bank'() { openMediaDialog({ bank: true, kind: this.dataset.kind, index: Number(this.dataset.index) }); },
+    'remove-bank'() { removeBank(this.dataset.kind, Number(this.dataset.index)); },
+    'select-all'() {
+      ensureEvidence();
+      const kind = this.dataset.kind;
+      quote.evidence.generalIds[kind] = (store.lib.evidenceBank[kind] || []).map((piece) => piece.id);
+      saveNow();
+      renderEvidence();
+    },
+    'select-none'() {
+      ensureEvidence();
+      quote.evidence.generalIds[this.dataset.kind] = [];
+      saveNow();
+      renderEvidence();
+    }
   };
 
   /* ---------- arranque ---------- */
@@ -583,6 +771,18 @@
     }, true);
 
     document.addEventListener('change', (event) => {
+      const box = event.target.closest('[data-evidence-kind]');
+      if (box) {
+        ensureEvidence();
+        const kind = box.dataset.evidenceKind;
+        const ids = new Set(quote.evidence.generalIds[kind]);
+        if (box.checked) ids.add(box.value);
+        else ids.delete(box.value);
+        quote.evidence.generalIds[kind] = Array.from(ids);
+        saveNow();
+        renderEvidence();
+        return;
+      }
       if (event.target.matches('[data-input="meta.date"]')) {
         quote.meta.date = event.target.value;
         P.render.sync(quote);
@@ -651,6 +851,7 @@
     quote = store.load();
     updateLibraryCount();
     P.render.all(quote);
+    renderEvidence();
     bind();
     applyEditMode();
     observeSections();

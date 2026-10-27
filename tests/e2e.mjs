@@ -165,6 +165,57 @@ try {
   await libContext.close();
   console.log('E2E biblioteca: OK');
 
+  /* ---------- evidencias ---------- */
+  const evContext = await browser.newContext();
+  const ev = await evContext.newPage();
+  const evErrors = watch(ev);
+  ev.on('dialog', (dialog) => dialog.accept());
+
+  await ev.goto(matrixUrl);
+  await ev.waitForSelector('body.ready', { timeout: 10000 });
+  await ev.locator('[data-action="open-evidence"]').click();
+  await ev.waitForSelector('#evidenceDialog[open]');
+
+  assert.equal(await ev.locator('.bank-row[data-bank-kind="videos"]').count(), 5, 'el banco arranca con 5 videos');
+  assert.equal(await ev.locator('.bank-row[data-bank-kind="images"]').count(), 5, 'el banco arranca con 5 imágenes');
+  assert.equal((await ev.locator('[data-bank-count]').innerText()).trim(), '10');
+
+  await ev.locator('[data-mode="general"]').click();
+  assert.equal(await ev.locator('[data-mode="general"]').getAttribute('aria-pressed'), 'true');
+
+  await ev.locator('[data-action="select-all"][data-kind="videos"]').click();
+  assert.equal(await ev.locator('[data-evidence-kind="videos"]:checked').count(), 5);
+  assert.equal((await ev.locator('[data-evidence-count]').innerText()).trim(), '5');
+
+  await ev.reload();
+  await ev.waitForSelector('body.ready');
+  await ev.locator('[data-action="open-evidence"]').click();
+  await ev.waitForSelector('#evidenceDialog[open]');
+  assert.equal(await ev.locator('[data-mode="general"]').getAttribute('aria-pressed'), 'true', 'el modo persiste');
+  assert.equal(await ev.locator('[data-evidence-kind="videos"]:checked').count(), 5, 'la selección persiste');
+
+  await ev.locator('[data-action="toggle-new-client"]').click();
+  assert.equal(await ev.locator('[data-mode="service"]').getAttribute('aria-pressed'), 'true', 'el modo vuelve a servicio');
+  assert.equal(await ev.locator('[data-evidence-kind="videos"]:checked').count(), 5, 'conserva la selección al volver');
+  await ev.locator('[data-action="toggle-new-client"]').click();
+  assert.equal(await ev.locator('[data-mode="general"]').getAttribute('aria-pressed'), 'true', 'vuelve a general');
+  assert.equal(await ev.locator('[data-evidence-kind="videos"]:checked').count(), 5, 'no reinicia la selección');
+
+  const removed = await ev.locator('.bank-row[data-bank-kind="videos"]').first().getAttribute('data-id');
+  await ev.locator('[data-action="remove-bank"]').first().click();
+  assert.equal(await ev.locator('.bank-row[data-bank-kind="videos"]').count(), 4, 'quitar reduce el banco');
+  const selected = await ev.evaluate(() => {
+    const lib = JSON.parse(localStorage.getItem('pandora.biblioteca.v1'));
+    const active = lib.quotes.find((entry) => entry.id === lib.activeId);
+    return active.quote.evidence.generalIds.videos;
+  });
+  assert.equal(selected.includes(removed), false, 'la selección ya no contiene la pieza quitada');
+  assert.equal(selected.length, 4);
+
+  assert.deepEqual(evErrors, [], `errores en evidencias:\n${evErrors.join('\n')}`);
+  await evContext.close();
+  console.log('E2E evidencias: OK');
+
   /* ---------- versión cliente ---------- */
   writeClientPage();
   await waitForServer(`${serverUrl}/c/_e2e/`);
