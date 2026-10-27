@@ -48,9 +48,12 @@
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>
       <span data-edit-label>Editar</span>
     </button>
-    <button class="btn primary" data-action="print">
+    <button class="btn ghost" data-action="print" title="Exportar PDF" aria-label="Exportar PDF">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 17v3h16v-3"/></svg>
-      Exportar PDF
+    </button>
+    <button class="btn primary" data-action="open-publish">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M4 17v3h16v-3"/></svg>
+      Exportar cliente
     </button>
   </div>
 </header>
@@ -71,8 +74,8 @@
         <p class="doc-meta">
           <span>Cotización <b data-text="meta.quoteNo"></b></span>
           <span class="sep" aria-hidden="true"></span>
-          <span class="date-view"><time data-date></time></span>
-          <input class="date-input edit-only" type="date" data-input="meta.date" aria-label="Fecha de la cotización">
+          <span class="date-view"><time data-date-today></time></span>
+          <span class="date-note edit-only">Se actualizará al exportar</span>
         </p>
 
         <p class="for">Propuesta preparada para</p>
@@ -333,6 +336,41 @@
   </div>
 </dialog>
 
+<dialog class="sheet" id="publishDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Exportar cliente</h2>
+    <p class="sheet-sub">Se descarga un paquete. Arrástralo sobre <code>Publicar cliente.command</code> para subirlo.</p>
+
+    <dl class="publish-summary">
+      <div><dt>Cliente</dt><dd data-publish="client"></dd></div>
+      <div><dt>Servicios</dt><dd data-publish="services"></dd></div>
+      <div><dt>Fecha</dt><dd data-publish="date"></dd></div>
+      <div><dt>Evidencia</dt><dd data-publish="mode"></dd></div>
+    </dl>
+
+    <p class="publish-url"><span>URL</span><a data-publish-url href="#" target="_blank" rel="noopener"></a></p>
+    <ul class="publish-errors" id="publishErrors" hidden></ul>
+
+    <p class="sheet-warn">Al exportar se actualiza la fecha y se guarda una versión en el historial. Republicar conserva la misma URL.</p>
+
+    <div class="sheet-actions">
+      <button class="btn ghost" data-action="close-publish">Cancelar</button>
+      <button class="btn primary" data-action="download-package">Descargar paquete</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet sheet-wide" id="historyDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Historial</h2>
+    <p class="sheet-sub" id="historySub"></p>
+    <div class="history-list" id="historyList"></div>
+    <div class="sheet-actions">
+      <button class="btn primary" data-action="close-history">Listo</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog class="sheet sheet-wide" id="libraryDialog">
   <div class="sheet-form">
     <h2 class="sheet-title">Cotizaciones</h2>
@@ -356,6 +394,7 @@
 
 <script>window.P = { assetBase: 'docs/' };</script>
 <script src="docs/app/core.js"></script>
+<script src="js/config.js"></script>
 <script src="js/catalog.js"></script>
 <script src="js/store.js"></script>
 <script src="docs/app/render.js"></script>

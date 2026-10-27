@@ -464,8 +464,12 @@
       dateEl.textContent = P.dateLabel(quote.meta.date);
       dateEl.setAttribute('datetime', quote.meta.date || '');
     }
-    const dateInput = document.querySelector('[data-input="meta.date"]');
-    if (dateInput && document.activeElement !== dateInput) dateInput.value = quote.meta.date || '';
+    const todayEl = document.querySelector('[data-date-today]');
+    if (todayEl) {
+      const iso = P.todayISO();
+      todayEl.textContent = P.dateLabel(iso);
+      todayEl.setAttribute('datetime', iso);
+    }
 
     document.querySelectorAll('.amt').forEach((input) => {
       if (document.activeElement !== input) {

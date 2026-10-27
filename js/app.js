@@ -529,6 +529,8 @@
         </button>
         <span class="status-pill status-${state}">${stateLabel}</span>
         <div class="library-actions">
+          ${entry.versions.length ? `<button class="mini" data-action="open-history" data-id="${esc(entry.id)}">Historial (${entry.versions.length})</button>` : ''}
+          ${url && !q.meta.retiredAt ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
           <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
           <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>
         </div>
@@ -585,6 +587,191 @@
       }
     };
     reader.readAsText(file);
+  }
+
+  /* ---------- publicación ---------- */
+
+  const MODE_LABEL = { service: 'Servicio', general: 'General', both: 'Ambas', none: 'Ocultar' };
+  const MEDIA_REASON = {
+    blob: 'Archivo temporal de esta sesión. Cópialo a docs/assets/media/ y usa su ruta.',
+    'data-video': 'Los videos incrustados no se publican. Usa una ruta o un enlace de YouTube/Vimeo.',
+    'data-image-size': 'La imagen incrustada pasa de 1.5 MB. Copia el archivo a docs/assets/ y usa su ruta.',
+    scheme: 'Ese enlace no es seguro. Usa https:// o una ruta assets/.',
+    missing: 'No existe ese archivo dentro de docs/assets/. Revisa la ruta.'
+  };
+
+  function pageUrl(slug) {
+    return `${P.siteBase || ''}/c/${slug}/`;
+  }
+
+  function ensureSlug() {
+    if (quote.meta.slug) return quote.meta.slug;
+    const client = (quote.meta.client || 'cliente').trim();
+    let slug = P.uniqueSlug(client);
+    while (store.lib.quotes.some((entry) => entry.quote.meta && entry.quote.meta.slug === slug && entry.id !== quote.id)) {
+      slug = P.uniqueSlug(client);
+    }
+    quote.meta.slug = slug;
+    return slug;
+  }
+
+  function buildPayload() {
+    const now = new Date();
+    ensureSlug();
+    ensureEvidence();
+    const payload = P.buildClientPayload(quote, { bank: store.lib.evidenceBank, now });
+    payload.quote.meta.slug = quote.meta.slug;
+    payload.slug = quote.meta.slug;
+    return payload;
+  }
+
+  function publishServices() {
+    return quote.blocks
+      .map((block) => block.serviceName || block.title)
+      .filter((value, index, arr) => arr.indexOf(value) === index)
+      .join(' + ');
+  }
+
+  function renderPublish(payload, errors) {
+    $('[data-publish="client"]').textContent = quote.meta.client || '';
+    $('[data-publish="services"]').textContent = publishServices();
+    $('[data-publish="date"]').textContent = P.dateLabel(payload.quote.meta.date);
+    $('[data-publish="mode"]').textContent = MODE_LABEL[quote.evidence.mode] || 'Servicio';
+
+    const url = pageUrl(payload.slug);
+    const link = $('[data-publish-url]');
+    link.href = url;
+    link.textContent = url;
+
+    const list = $('#publishErrors');
+    list.innerHTML = errors.map((error) => `<li>
+      <strong>${esc(error.title)}</strong>
+      <span>${esc(MEDIA_REASON[error.reason] || 'Revisa esta pieza.')}</span>
+      <code>${esc(error.src.length > 90 ? error.src.slice(0, 87) + '…' : error.src)}</code>
+    </li>`).join('');
+    list.hidden = errors.length === 0;
+
+    const download = $('[data-action="download-package"]');
+    download.disabled = errors.length > 0;
+    download.setAttribute('aria-disabled', String(errors.length > 0));
+  }
+
+  function openPublish() {
+    const client = (quote.meta.client || '').trim();
+    if (!client) {
+      toast('Ponle nombre al cliente antes de exportar.');
+      if (!editMode) {
+        editMode = true;
+        applyEditMode();
+      }
+      focusPath('meta.client');
+      return;
+    }
+    const payload = buildPayload();
+    renderPublish(payload, P.validateMedia(payload));
+    $('#publishDialog').showModal();
+  }
+
+  function exportStamp() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  }
+
+  function downloadPackage() {
+    const payload = buildPayload();
+    const errors = P.validateMedia(payload);
+    if (errors.length) {
+      renderPublish(payload, errors);
+      return;
+    }
+
+    const url = pageUrl(payload.slug);
+    quote.meta.date = payload.quote.meta.date;
+    quote.meta.generatedAt = payload.generatedAt;
+    quote.meta.slug = payload.slug;
+    quote.meta.publishedUrl = url;
+    quote.meta.publishedAt = payload.generatedAt;
+    quote.meta.retiredAt = '';
+
+    payload.quote.meta.date = quote.meta.date;
+    payload.quote.meta.generatedAt = quote.meta.generatedAt;
+    payload.quote.meta.slug = quote.meta.slug;
+    payload.quote.meta.publishedUrl = quote.meta.publishedUrl;
+    payload.quote.meta.publishedAt = quote.meta.publishedAt;
+    payload.quote.meta.retiredAt = '';
+
+    const entry = P.library.update(store.lib, store.lib.activeId, quote);
+    P.library.snapshot(store.lib, store.lib.activeId, P.dateLabel(quote.meta.date));
+    store.save();
+
+    const pkg = { kind: 'pandora-cliente', version: 1, ...payload };
+    try {
+      downloadJson(`pandora-${payload.slug}-${exportStamp()}.json`, pkg);
+    } catch (err) {
+      toast(`No se pudo descargar el paquete. La URL será ${url}`);
+    }
+
+    $('#publishDialog').close();
+    refresh();
+    renderLibrary();
+    if (entry) toast('Paquete descargado. Arrástralo sobre «Publicar cliente.command».');
+  }
+
+  function retireQuote(id) {
+    const entry = store.lib.quotes.find((item) => item.id === id);
+    if (!entry) return;
+    const target = entry.quote;
+    if (!confirm('La URL dejará de funcionar. La cotización y su historial siguen en esta Mac. ¿Retirar la publicación?')) return;
+
+    const pkg = {
+      kind: 'pandora-retiro',
+      version: 1,
+      slug: target.meta.slug,
+      quoteId: target.id,
+      client: target.meta.client,
+      generatedAt: new Date().toISOString()
+    };
+    downloadJson(`pandora-retiro-${target.meta.slug}.json`, pkg);
+    target.meta.retiredAt = pkg.generatedAt;
+    P.library.update(store.lib, entry.id, target);
+    if (entry.id === store.lib.activeId) quote = target;
+    store.save();
+    refresh();
+    renderLibrary();
+    toast('Paquete de retiro descargado. Arrástralo sobre «Publicar cliente.command».');
+  }
+
+  let historyCtx = null;
+
+  function openHistory(id) {
+    const entry = store.lib.quotes.find((item) => item.id === id);
+    if (!entry) return;
+    historyCtx = id;
+    $('#historySub').textContent = `${entry.name} · ${entry.versions.length} ${entry.versions.length === 1 ? 'versión' : 'versiones'}`;
+    $('#historyList').innerHTML = entry.versions.map((version) => `<div class="history-row">
+      <span class="history-when">${esc(P.dateLabel(version.quote.meta.date))} · ${esc(P.timeLabel(version.at))}</span>
+      <span class="history-label">${esc(version.label || 'Versión')}</span>
+      <button class="mini" data-action="restore-version" data-at="${esc(version.at)}">Restaurar</button>
+    </div>`).join('');
+    $('#historyDialog').showModal();
+  }
+
+  function restoreVersion(at) {
+    const entry = store.lib.quotes.find((item) => item.id === historyCtx);
+    if (!entry) return;
+    if (!confirm('¿Restaurar esta versión? Los cambios actuales se reemplazan. La URL publicada no cambia hasta que vuelvas a exportar.')) return;
+    const restored = P.library.restore(store.lib, historyCtx, at);
+    if (!restored) return;
+    if (historyCtx === store.lib.activeId) {
+      quote = restored;
+      store.quote = quote;
+    }
+    P.library.save(store.lib);
+    refresh();
+    renderLibrary();
+    $('#historyDialog').close();
+    toast('Versión restaurada.');
   }
 
   /* ---------- acciones ---------- */
@@ -715,6 +902,13 @@
       renderLibrary();
       toast('Cotización eliminada de este navegador.');
     },
+    'open-publish'() { openPublish(); },
+    'close-publish'() { $('#publishDialog').close(); },
+    'download-package'() { downloadPackage(); },
+    'retire-quote'() { retireQuote(this.dataset.id); },
+    'open-history'() { openHistory(this.dataset.id); },
+    'close-history'() { $('#historyDialog').close(); },
+    'restore-version'() { restoreVersion(this.dataset.at); },
     'backup-library'() { backupLibrary(); },
     'import-library'() { $('#libraryFile').click(); },
     'open-evidence'() {
@@ -786,11 +980,7 @@
     document.addEventListener('blur', (event) => {
       if (event.target.closest('.amt')) onAmountBlur(event);
       else if (event.target.closest('.pct-input')) onPctChange(event);
-      else if (event.target.matches('[data-input="meta.date"]')) {
-        quote.meta.date = event.target.value;
-        P.render.sync(quote);
-        saveNow();
-      }
+
     }, true);
 
     document.addEventListener('change', (event) => {
@@ -806,11 +996,6 @@
         refresh();
         renderEvidence();
         return;
-      }
-      if (event.target.matches('[data-input="meta.date"]')) {
-        quote.meta.date = event.target.value;
-        P.render.sync(quote);
-        saveNow();
       }
     });
 

@@ -222,6 +222,106 @@ try {
   await evContext.close();
   console.log('E2E evidencias: OK');
 
+  /* ---------- exportar cliente, historial y retiro ---------- */
+  const pubContext = await browser.newContext({ acceptDownloads: true });
+  const pub = await pubContext.newPage();
+  const pubErrors = watch(pub);
+  pub.on('dialog', (dialog) => dialog.accept());
+
+  await pub.goto(matrixUrl);
+  await pub.waitForSelector('body.ready', { timeout: 10000 });
+  await pub.locator('[data-action="toggle-edit"]').click();
+  await pub.locator('[data-text="meta.client"]').first().fill('Cliente 01');
+  await pub.waitForTimeout(700);
+
+  await pub.locator('[data-action="open-publish"]').click();
+  await pub.waitForSelector('#publishDialog[open]');
+  const firstUrl = await pub.locator('[data-publish-url]').getAttribute('href');
+  assert.match(firstUrl, /^https:\/\/felipeflv\.github\.io\/cotizacion-pandora\/c\/[a-z0-9-]+\/$/, 'la URL usa la base y el slug');
+  const slug = firstUrl.split('/c/')[1].replace(/\/$/, '');
+
+  const pubTmp = path.join(root, 'tests/tmp');
+  mkdirSync(pubTmp, { recursive: true });
+  const [pkgDownload] = await Promise.all([
+    pub.waitForEvent('download'),
+    pub.locator('[data-action="download-package"]').click()
+  ]);
+  const pkgPath = path.join(pubTmp, 'cliente.json');
+  await pkgDownload.saveAs(pkgPath);
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  assert.equal(pkg.kind, 'pandora-cliente');
+  assert.equal(pkg.version, 1);
+  assert.equal(pkg.slug, slug);
+  assert.equal(pkg.quote.meta.client, 'Cliente 01');
+  assert.equal(pkg.quote.meta.date, P.todayISO());
+  assert.match(pkg.quote.meta.publishedUrl, /\/c\/[a-z0-9-]+\/$/);
+  assert.ok(pkg.quote.blocks[0].videos.length >= 2, 'el modo servicio conserva sus videos');
+  assert.equal(pkg.general.videos.length, 0, 'el modo servicio no incluye el banco');
+
+  await pub.locator('[data-action="open-library"]').click();
+  await pub.waitForSelector('#libraryDialog[open]');
+  assert.match(await pub.locator('[data-action="open-history"]').innerText(), /\(1\)/, 'el primer export crea una versión');
+  await pub.locator('[data-action="close-library"]').click();
+
+  await pub.locator('[data-text="meta.client"]').first().fill('Cliente 01 bis');
+  await pub.waitForTimeout(700);
+  await pub.locator('[data-action="open-publish"]').click();
+  await pub.waitForSelector('#publishDialog[open]');
+  await Promise.all([
+    pub.waitForEvent('download'),
+    pub.locator('[data-action="download-package"]').click()
+  ]);
+  await pub.locator('[data-action="open-library"]').click();
+  await pub.waitForSelector('#libraryDialog[open]');
+  assert.match(await pub.locator('[data-action="open-history"]').innerText(), /\(2\)/, 'el segundo export suma otra versión');
+  await pub.locator('[data-action="open-history"]').click();
+  await pub.waitForSelector('#historyDialog[open]');
+  assert.equal(await pub.locator('.history-row').count(), 2);
+  await pub.locator('[data-action="restore-version"]').nth(1).click();
+  await pub.waitForFunction(() => !document.querySelector('#historyDialog').open);
+  assert.equal((await pub.locator('[data-text="meta.client"]').first().innerText()).trim(), 'Cliente 01', 'restaurar vuelve a la versión anterior');
+  await pub.locator('[data-action="close-library"]').click();
+
+  await pub.evaluate(() => {
+    P.store.quote.blocks[0].videos[0].src = 'blob:http://x/y';
+    P.store.save();
+  });
+  await pub.locator('[data-action="open-publish"]').click();
+  await pub.waitForSelector('#publishDialog[open]');
+  assert.equal(await pub.locator('#publishErrors').isVisible(), true, 'un blob bloquea la exportación');
+  assert.equal(await pub.locator('[data-action="download-package"]').isDisabled(), true);
+  await pub.locator('[data-action="close-publish"]').click();
+
+  await pub.evaluate(() => {
+    P.store.quote.evidence.mode = 'none';
+    P.store.save();
+  });
+  await pub.locator('[data-action="open-publish"]').click();
+  await pub.waitForSelector('#publishDialog[open]');
+  assert.equal(await pub.locator('#publishErrors').isHidden(), true, 'ocultar la evidencia evita el bloqueo');
+  assert.equal(await pub.locator('[data-action="download-package"]').isDisabled(), false);
+  await pub.locator('[data-action="close-publish"]').click();
+
+  await pub.locator('[data-action="open-library"]').click();
+  await pub.waitForSelector('#libraryDialog[open]');
+  const [retireDownload] = await Promise.all([
+    pub.waitForEvent('download'),
+    pub.locator('[data-action="retire-quote"]').first().click()
+  ]);
+  const retirePath = path.join(pubTmp, 'retiro.json');
+  await retireDownload.saveAs(retirePath);
+  const retire = JSON.parse(readFileSync(retirePath, 'utf8'));
+  assert.equal(retire.kind, 'pandora-retiro');
+  assert.equal(retire.version, 1);
+  assert.equal(retire.slug, slug);
+  assert.match(retire.quoteId, /^q_/);
+  await pub.waitForFunction(() => document.querySelector('.status-pill').textContent === 'Retirada');
+  assert.equal(await pub.locator('.library-row').count(), 1, 'la cotización sigue en la biblioteca');
+
+  assert.deepEqual(pubErrors, [], `errores al exportar:\n${pubErrors.join('\n')}`);
+  await pubContext.close();
+  console.log('E2E exportación: OK');
+
   /* ---------- versión cliente ---------- */
   MODES.forEach(writeClientPage);
   await waitForServer(`${serverUrl}/c/_e2e-service/`);
