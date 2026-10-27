@@ -1,8 +1,20 @@
 /* Catálogo de servicios y cotización inicial.
    Para cambiar la evidencia de un servicio, edita sus rutas en `videos` e `images`
    o usa el botón "Reemplazar" dentro del dashboard. */
-(function () {
+(function (root, factory) {
   'use strict';
+  const isNode = typeof module === 'object' && module.exports;
+  const core = isNode ? require('../docs/app/core.js') : root.P;
+  const api = factory(core || {});
+  if (isNode) {
+    module.exports = api;
+  } else {
+    root.P = Object.assign(root.P || {}, api);
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (core) {
+  'use strict';
+
+  const uid = core.uid || ((prefix) => prefix + Math.random().toString(36).slice(2, 8));
 
   const media = (svc, n, ext) => `assets/media/${svc}/${svc}-${n}.${ext}`;
 
@@ -226,7 +238,7 @@
     const service = catalog[serviceId];
     if (!service) return null;
     return {
-      uid: 'b' + Math.random().toString(36).slice(2, 8),
+      uid: uid('b'),
       serviceId: service.id,
       title: service.title,
       tagline: service.tagline,
@@ -275,9 +287,10 @@
     };
   }
 
-  window.P = window.P || {};
-  window.P.catalog = catalog;
-  window.P.blockFromService = blockFromService;
-  window.P.defaultQuote = defaultQuote;
-  window.P.clone = clone;
-})();
+  return {
+    catalog,
+    blockFromService,
+    defaultQuote,
+    clone
+  };
+});
