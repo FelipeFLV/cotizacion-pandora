@@ -2,3 +2,8 @@
 .playwright-mcp/
 node_modules/
 *.log
+.superpowers/
+tests/tmp/
+docs/c/_e2e*/
+pandora-*.json
+pandora-biblioteca-*.json

@@ -1,8 +1,21 @@
 /* Catálogo de servicios y cotización inicial.
    Para cambiar la evidencia de un servicio, edita sus rutas en `videos` e `images`
    o usa el botón "Reemplazar" dentro del dashboard. */
-(function () {
+(function (root, factory) {
   'use strict';
+  const isNode = typeof module === 'object' && module.exports;
+  const core = isNode ? require('../docs/app/core.js') : root.P;
+  const api = factory(core || {});
+  if (isNode) {
+    Object.assign(core, api);
+    module.exports = core;
+  } else {
+    root.P = Object.assign(root.P || {}, api);
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (core) {
+  'use strict';
+
+  const uid = core.uid || ((prefix) => prefix + Math.random().toString(36).slice(2, 8));
 
   const media = (svc, n, ext) => `assets/media/${svc}/${svc}-${n}.${ext}`;
 
@@ -226,8 +239,9 @@
     const service = catalog[serviceId];
     if (!service) return null;
     return {
-      uid: 'b' + Math.random().toString(36).slice(2, 8),
+      uid: uid('b'),
       serviceId: service.id,
+      serviceName: service.name,
       title: service.title,
       tagline: service.tagline,
       duration: service.duration,
@@ -240,9 +254,13 @@
     };
   }
 
+  const LEGACY_HS_SLUG = 'h-s-inmobiliaria-7k2m';
+
   function defaultQuote() {
     return {
-      version: 1,
+      version: 2,
+      id: '',
+      evidence: { mode: 'service', generalIds: { videos: [], images: [] } },
       meta: {
         quoteNo: 'OCT26-23',
         date: '2026-10-23',
@@ -257,6 +275,12 @@
           { label: 'Al mes siguiente', pct: 40 }
         ],
         closing: 'Estamos listos para empezar cuando tú lo estés. Cualquier ajuste al alcance se conversa antes de la firma.',
+        slug: LEGACY_HS_SLUG,
+        generatedAt: '',
+        publishedUrl: '',
+        publishedAt: '',
+        retiredAt: '',
+        retireRequestedAt: '',
         conditions: [
           'La proforma tiene una vigencia de 30 días desde la fecha de emisión.',
           'Los precios están expresados en soles peruanos y no incluyen I.G.V. salvo indicación contraria.',
@@ -275,9 +299,55 @@
     };
   }
 
-  window.P = window.P || {};
-  window.P.catalog = catalog;
-  window.P.blockFromService = blockFromService;
-  window.P.defaultQuote = defaultQuote;
-  window.P.clone = clone;
-})();
+  function seedEvidenceBank() {
+    const bank = { videos: [], images: [] };
+    Object.values(catalog).forEach((service) => {
+      const video = (service.videos || [])[0];
+      if (video) {
+        bank.videos.push({
+          id: uid('e'),
+          title: `${service.name} — ${video.title}`,
+          src: video.src,
+          poster: video.poster || '',
+          service: service.name
+        });
+      }
+      const image = (service.images || [])[0];
+      if (image) {
+        bank.images.push({
+          id: uid('e'),
+          title: `${service.name} — ${image.title}`,
+          src: image.src,
+          service: service.name
+        });
+      }
+    });
+    return bank;
+  }
+
+  function newQuote(serviceId) {
+    const quote = defaultQuote();
+    quote.meta.client = 'Cliente sin nombre';
+    quote.meta.quoteNo = '';
+    quote.meta.lede = 'Propuesta de marketing con propósito.';
+    quote.meta.date = core.todayISO ? core.todayISO() : new Date().toISOString().slice(0, 10);
+    quote.meta.slug = '';
+    quote.meta.publishedUrl = '';
+    quote.meta.publishedAt = '';
+    quote.meta.retiredAt = '';
+    quote.evidence = { mode: 'service', generalIds: { videos: [], images: [] } };
+    const block = blockFromService(serviceId) || blockFromService('metaads');
+    quote.blocks = [block];
+    return quote;
+  }
+
+  return {
+    catalog,
+    blockFromService,
+    LEGACY_HS_SLUG,
+    defaultQuote,
+    newQuote,
+    seedEvidenceBank,
+    clone
+  };
+});

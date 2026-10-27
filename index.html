@@ -7,17 +7,17 @@
 <meta name="description" content="Propuesta interactiva de Pandora Marketing: alcance, evidencia y inversión.">
 <meta name="theme-color" content="#F8F7F5">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="assets/fonts.css">
-<link rel="stylesheet" href="styles/app.css">
-<link rel="stylesheet" href="styles/print.css" media="print">
+<link rel="icon" href="docs/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs/assets/fonts.css">
+<link rel="stylesheet" href="docs/app/app.css">
+<link rel="stylesheet" href="docs/app/print.css" media="print">
 </head>
 <body>
 <a class="skip-link" href="#contenido">Ir al contenido</a>
 
 <header class="topbar" id="topbar">
   <a class="brand" href="#resumen" aria-label="Pandora Marketing — inicio">
-    <img src="assets/logo-mark.png" alt="" width="30" height="30">
+    <img src="docs/assets/logo-mark.png" alt="" width="30" height="30">
     <span class="brand-name">pandora</span>
   </a>
 
@@ -25,11 +25,22 @@
     <a href="#resumen" data-nav>Resumen</a>
     <a href="#alcance" data-nav>Alcance</a>
     <a href="#evidencia" data-nav>Evidencia</a>
+    <a href="#otros-trabajos" data-nav hidden>Otros trabajos</a>
     <a href="#inversion" data-nav>Inversión</a>
     <a href="#condiciones" data-nav>Condiciones</a>
   </nav>
 
   <div class="topbar-actions">
+    <button class="btn ghost" data-action="open-evidence" aria-haspopup="dialog" aria-label="Evidencias">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 12 2.5 2.5L15 11l3 3"/><circle cx="8" cy="9" r="1.2"/></svg>
+      <span>Evidencias</span>
+      <span class="count" data-evidence-count hidden>0</span>
+    </button>
+    <button class="btn ghost" data-action="open-library" aria-haspopup="dialog" aria-label="Cotizaciones guardadas">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      <span>Cotizaciones</span>
+      <span class="count" data-library-count>1</span>
+    </button>
     <button class="icon-btn" data-action="fullscreen" title="Pantalla completa" aria-label="Pantalla completa">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -37,9 +48,12 @@
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>
       <span data-edit-label>Editar</span>
     </button>
-    <button class="btn primary" data-action="print">
+    <button class="btn ghost" data-action="print" title="Exportar PDF" aria-label="Exportar PDF">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 17v3h16v-3"/></svg>
-      Exportar PDF
+    </button>
+    <button class="btn primary" data-action="open-publish">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M4 17v3h16v-3"/></svg>
+      Exportar cliente
     </button>
   </div>
 </header>
@@ -56,12 +70,12 @@
 
     <div class="hero-inner">
       <div class="hero-copy">
-        <img class="print-brand print-only" src="assets/logo-pandora.png" alt="Pandora Marketing con propósito">
+        <img class="print-brand print-only" src="docs/assets/logo-pandora.png" alt="Pandora Marketing con propósito">
         <p class="doc-meta">
           <span>Cotización <b data-text="meta.quoteNo"></b></span>
           <span class="sep" aria-hidden="true"></span>
-          <span class="date-view"><time data-date></time></span>
-          <input class="date-input edit-only" type="date" data-input="meta.date" aria-label="Fecha de la cotización">
+          <span class="date-view"><time data-date-today></time></span>
+          <span class="date-note edit-only">Se actualizará al exportar</span>
         </p>
 
         <p class="for">Propuesta preparada para</p>
@@ -196,9 +210,6 @@
         </p>
         <div class="edit-only edit-tools">
           <button class="btn small ghost" data-action="reset">Restablecer</button>
-          <button class="btn small ghost" data-action="export-json">Exportar datos</button>
-          <button class="btn small ghost" data-action="import-json">Importar datos</button>
-          <input type="file" id="importFile" accept="application/json" hidden>
         </div>
       </div>
     </div>
@@ -211,7 +222,7 @@
     </button>
   </div>
   <footer class="print-foot print-only">
-    <img src="assets/logo-pandora.png" alt="Pandora Marketing con propósito">
+    <img src="docs/assets/logo-pandora.png" alt="Pandora Marketing con propósito">
     <div class="print-foot-lines">
       <p>Pandora Marketing S.A.C. · RUC 20559862585</p>
       <p>+51 934 363 689 · info@pandoramarketing.net · pandoramarketing.net</p>
@@ -222,7 +233,7 @@
 <footer class="site-foot">
   <div class="foot-inner">
     <div class="foot-brand">
-      <img src="assets/logo-pandora.png" alt="Pandora Marketing con propósito" width="188" height="24">
+      <img src="docs/assets/logo-pandora.png" alt="Pandora Marketing con propósito" width="188" height="24">
     </div>
     <div class="foot-meta">
       <a href="https://wa.me/51934363689">+51 934 363 689</a>
@@ -242,15 +253,19 @@
 
 <dialog class="sheet" id="mediaDialog">
   <form method="dialog" class="sheet-form" id="mediaForm">
-    <h2 class="sheet-title">Reemplazar pieza</h2>
+    <h2 class="sheet-title" id="mediaTitle">Reemplazar pieza</h2>
     <p class="sheet-sub" id="mediaHint">Pega una ruta del proyecto o un enlace de YouTube, Vimeo o un video directo.</p>
     <label class="field">
       <span>Título de la pieza</span>
       <input name="title" type="text" autocomplete="off">
     </label>
+    <label class="field" id="mediaServiceField" hidden>
+      <span>Servicio</span>
+      <select name="service"></select>
+    </label>
     <label class="field">
       <span>Ruta o enlace</span>
-      <input name="src" type="text" autocomplete="off" placeholder="assets/media/… o https://…">
+      <input name="src" type="text" autocomplete="off" placeholder="docs/assets/media/… o https://…">
     </label>
     <div class="sheet-or">o</div>
     <label class="file-pick">
@@ -258,7 +273,7 @@
       <span>Elegir archivo del equipo</span>
     </label>
     <p class="sheet-warn" id="mediaWarn" hidden>
-      El archivo se verá ahora, pero para conservarlo al recargar guárdalo en la carpeta <code>assets/media/</code> y usa su ruta.
+      El archivo se verá ahora, pero para conservarlo al recargar guárdalo en la carpeta <code>docs/assets/media/</code> y usa su ruta.
     </p>
     <div class="sheet-actions">
       <button class="btn ghost danger" type="button" id="mediaDelete" hidden>Quitar pieza</button>
@@ -280,14 +295,110 @@
   </div>
 </dialog>
 
+<dialog class="sheet sheet-wide" id="evidenceDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Evidencias</h2>
+    <p class="sheet-sub">Lo que verá el cliente en la versión publicada.</p>
+
+    <div class="mode-switch" role="group" aria-label="Qué evidencia mostrar">
+      <button data-action="evidence-mode" data-mode="service">Servicio</button>
+      <button data-action="evidence-mode" data-mode="general">General</button>
+      <button data-action="evidence-mode" data-mode="both">Ambas</button>
+      <button data-action="evidence-mode" data-mode="none">Ocultar</button>
+    </div>
+
+    <div class="evidence-meta">
+      <button class="btn small ghost" data-action="toggle-new-client" aria-pressed="false">Modo cliente nuevo</button>
+      <p class="evidence-note" id="evidenceModeNote" hidden>No se mostrará evidencia en la versión cliente.</p>
+    </div>
+
+    <div class="evidence-grid">
+      <section class="evidence-col">
+        <h3>Banco general <span class="count" data-bank-count>0</span></h3>
+        <p class="evidence-help">Piezas de otros trabajos que puedes reutilizar.</p>
+        <div id="bankList"></div>
+        <div class="evidence-add">
+          <button class="btn small ghost" data-action="add-bank" data-kind="videos">+ Video</button>
+          <button class="btn small ghost" data-action="add-bank" data-kind="images">+ Imagen</button>
+        </div>
+      </section>
+
+      <section class="evidence-col">
+        <h3>En esta cotización</h3>
+        <p class="evidence-help">Marca las piezas que acompañan esta propuesta.</p>
+        <div id="evidenceSelection"></div>
+      </section>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn primary" data-action="close-evidence">Listo</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="publishDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Exportar cliente</h2>
+    <p class="sheet-sub">Se descarga un paquete. Arrástralo sobre <code>Publicar cliente.command</code> para subirlo.</p>
+
+    <dl class="publish-summary">
+      <div><dt>Cliente</dt><dd data-publish="client"></dd></div>
+      <div><dt>Servicios</dt><dd data-publish="services"></dd></div>
+      <div><dt>Fecha</dt><dd data-publish="date"></dd></div>
+      <div><dt>Evidencia</dt><dd data-publish="mode"></dd></div>
+    </dl>
+
+    <p class="publish-url"><span>URL</span><a data-publish-url href="#" target="_blank" rel="noopener"></a></p>
+    <p class="sheet-warn" id="publishWarning" hidden>No marcaste piezas generales: se usará la evidencia de cada servicio.</p>
+    <ul class="publish-errors" id="publishErrors" hidden></ul>
+
+    <p class="sheet-warn">Al exportar se actualiza la fecha y se guarda una versión en el historial. Republicar conserva la misma URL.</p>
+
+    <div class="sheet-actions">
+      <button class="btn ghost" data-action="close-publish">Cancelar</button>
+      <button class="btn primary" data-action="download-package">Descargar paquete</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet sheet-wide" id="historyDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Historial</h2>
+    <p class="sheet-sub" id="historySub"></p>
+    <div class="history-list" id="historyList"></div>
+    <div class="sheet-actions">
+      <button class="btn primary" data-action="close-history">Listo</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet sheet-wide" id="libraryDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Cotizaciones</h2>
+    <p class="sheet-sub">Cada cliente guarda su propia propuesta en este navegador.</p>
+    <div class="library-list" id="libraryList"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" data-action="backup-library">Respaldar</button>
+      <button class="btn ghost" data-action="import-library">Importar respaldo</button>
+      <input type="file" id="libraryFile" accept="application/json" hidden>
+      <span class="grow"></span>
+      <button class="btn ghost" data-action="new-quote">Nueva cotización</button>
+      <button class="btn primary" data-action="close-library">Listo</button>
+    </div>
+  </div>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 
-<p class="edit-hint edit-only">Haz clic en cualquier texto para editarlo. Los cambios se guardan en este navegador.</p>
+<p class="edit-hint edit-only">Guardado en este navegador</p>
 
+<script>window.P = { assetBase: 'docs/' };</script>
+<script src="docs/app/core.js"></script>
+<script src="js/config.js"></script>
 <script src="js/catalog.js"></script>
 <script src="js/store.js"></script>
-<script src="js/render.js"></script>
+<script src="docs/app/render.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
