@@ -42,8 +42,23 @@
 
   /* ---------- render ---------- */
 
+  function currentGeneral() {
+    ensureEvidence();
+    const bank = store.lib.evidenceBank;
+    const ids = quote.evidence.generalIds;
+    return {
+      videos: (bank.videos || []).filter((piece) => ids.videos.includes(piece.id)),
+      images: (bank.images || []).filter((piece) => ids.images.includes(piece.id))
+    };
+  }
+
+  function renderOptions() {
+    ensureEvidence();
+    return { evidenceMode: quote.evidence.mode, general: currentGeneral() };
+  }
+
   function refresh() {
-    P.render.all(quote);
+    P.render.all(quote, renderOptions());
     applyEditMode();
     observeSections();
     updateEvidenceBadge();
@@ -230,12 +245,16 @@
   /* ---------- videos y galería ---------- */
 
   function playVideo(blockIndex, index) {
-    const video = quote.blocks[blockIndex].videos[index];
+    const video = blockIndex === 'general'
+      ? currentGeneral().videos[index]
+      : quote.blocks[blockIndex].videos[index];
     if (!video || !video.src) {
       toast('Esta pieza todavía no tiene archivo. Usa «Reemplazar» para añadirla.');
       return;
     }
-    const figure = document.querySelector(`[data-video][data-block="${blockIndex}"][data-index="${index}"]`);
+    const figure = blockIndex === 'general'
+      ? document.querySelector(`[data-video][data-general="1"][data-index="${index}"]`)
+      : document.querySelector(`[data-video][data-block="${blockIndex}"][data-index="${index}"]`);
     const frame = figure.querySelector('.shot-frame');
     const embed = P.render.embedUrl(video.src);
     $$('video').forEach((v) => v.pause());
@@ -248,7 +267,9 @@
   }
 
   function openLightbox(blockIndex, index) {
-    const image = quote.blocks[blockIndex].images[index];
+    const image = blockIndex === 'general'
+      ? currentGeneral().images[index]
+      : quote.blocks[blockIndex].images[index];
     if (!image || !image.src) return;
     $('#lbImg').src = P.assetUrl(image.src, P.assetBase);
     $('#lbImg').alt = image.title || '';
@@ -582,10 +603,10 @@
       else document.documentElement.requestFullscreen().catch(() => toast('Tu navegador no permitió pantalla completa.'));
     },
     'play-video'() {
-      playVideo(Number(this.dataset.block), Number(this.dataset.index));
+      playVideo(this.dataset.general ? 'general' : Number(this.dataset.block), Number(this.dataset.index));
     },
     lightbox() {
-      openLightbox(Number(this.dataset.block), Number(this.dataset.index));
+      openLightbox(this.dataset.general ? 'general' : Number(this.dataset.block), Number(this.dataset.index));
     },
     'close-lightbox'() { closeLightbox(); },
     'add-entry'() { addEntry(this.dataset.list, this.dataset.placeholder); },
@@ -733,12 +754,14 @@
       const kind = this.dataset.kind;
       quote.evidence.generalIds[kind] = (store.lib.evidenceBank[kind] || []).map((piece) => piece.id);
       saveNow();
+      refresh();
       renderEvidence();
     },
     'select-none'() {
       ensureEvidence();
       quote.evidence.generalIds[this.dataset.kind] = [];
       saveNow();
+      refresh();
       renderEvidence();
     }
   };
@@ -780,6 +803,7 @@
         else ids.delete(box.value);
         quote.evidence.generalIds[kind] = Array.from(ids);
         saveNow();
+        refresh();
         renderEvidence();
         return;
       }
@@ -850,7 +874,7 @@
   function init() {
     quote = store.load();
     updateLibraryCount();
-    P.render.all(quote);
+    P.render.all(quote, renderOptions());
     renderEvidence();
     bind();
     applyEditMode();

@@ -127,6 +127,87 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+
+  function buildClientPayload(quote, options) {
+    const opts = options || {};
+    const now = opts.now instanceof Date ? opts.now : new Date();
+    const bank = opts.bank || { videos: [], images: [] };
+    const out = clone(quote);
+
+    out.evidence = out.evidence || { mode: 'service', generalIds: { videos: [], images: [] } };
+    const evidence = out.evidence;
+    evidence.generalIds = evidence.generalIds || { videos: [], images: [] };
+    const mode = evidence.mode || 'service';
+    const ids = {
+      videos: evidence.generalIds.videos || [],
+      images: evidence.generalIds.images || []
+    };
+    const keepService = mode === 'service' || mode === 'both';
+    const keepGeneral = mode === 'general' || mode === 'both';
+
+    out.blocks = (out.blocks || []).map((block) => {
+      const copy = Object.assign({}, block);
+      copy.videos = keepService ? clone(block.videos || []) : [];
+      copy.images = keepService ? clone(block.images || []) : [];
+      return copy;
+    });
+
+    const general = keepGeneral
+      ? {
+          videos: (bank.videos || []).filter((piece) => ids.videos.includes(piece.id)).map(clone),
+          images: (bank.images || []).filter((piece) => ids.images.includes(piece.id)).map(clone)
+        }
+      : { videos: [], images: [] };
+
+    out.meta = out.meta || {};
+    out.meta.date = todayISO(now);
+    out.meta.generatedAt = now.toISOString();
+    out.meta.slug = out.meta.slug || uniqueSlug(out.meta.client || 'cliente');
+
+    return { quote: out, general, slug: out.meta.slug, generatedAt: out.meta.generatedAt };
+  }
+
+  function validateMedia(payload, options) {
+    const opts = options || {};
+    const errors = [];
+    const pkg = payload || {};
+    const quote = pkg.quote || {};
+
+    const check = (piece) => {
+      const src = String((piece && piece.src) || '');
+      if (!src) return;
+      const title = (piece && piece.title) || 'Pieza';
+      const add = (reason) => errors.push({ title, src, reason });
+
+      if (/^blob:/i.test(src)) return add('blob');
+      if (/^data:video\//i.test(src)) return add('data-video');
+      if (/^data:image\//i.test(src)) {
+        const comma = src.indexOf(',');
+        const bytes = Math.ceil(((src.length - comma - 1) * 3) / 4);
+        if (bytes > MAX_IMAGE_BYTES) add('data-image-size');
+        return;
+      }
+      if (/^(?:javascript|vbscript|file):/i.test(src)) return add('scheme');
+      if (/^assets\//i.test(src)) {
+        if (typeof opts.exists === 'function' && !opts.exists('docs/' + src)) add('missing');
+        return;
+      }
+      if (/^https?:\/\//i.test(src)) return;
+      add('scheme');
+    };
+
+    (quote.blocks || []).forEach((block) => {
+      (block.videos || []).forEach(check);
+      (block.images || []).forEach(check);
+    });
+    const general = pkg.general || {};
+    (general.videos || []).forEach(check);
+    (general.images || []).forEach(check);
+
+    return errors;
+  }
+
   return {
     get,
     set,
@@ -142,6 +223,8 @@
     slugify,
     uniqueSlug,
     assetUrl,
-    clone
+    clone,
+    buildClientPayload,
+    validateMedia
   };
 });

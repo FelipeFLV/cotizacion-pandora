@@ -26,27 +26,33 @@ function freePort() {
   });
 }
 
+const bank = P.seedEvidenceBank();
+const MODES = ['service', 'general', 'both', 'none'];
+
 function clientPackage(mode) {
   const quote = P.defaultQuote();
   quote.id = 'q_e2e';
-  quote.meta.date = '2026-10-27';
   quote.meta.client = 'Cliente Prueba';
-  quote.evidence = { mode, generalIds: { videos: [], images: [] } };
+  quote.evidence = {
+    mode,
+    generalIds: { videos: [bank.videos[0].id], images: [bank.images[0].id] }
+  };
+  const payload = P.buildClientPayload(quote, { bank, now: new Date(2026, 9, 27, 10, 42) });
   return {
-    slug: '_e2e',
-    generatedAt: '2026-10-27T20:42:00.000Z',
-    quote,
-    general: { videos: [], images: [] }
+    slug: `_e2e-${mode}`,
+    generatedAt: payload.generatedAt,
+    quote: payload.quote,
+    general: payload.general
   };
 }
 
-function writeClientPage() {
+function writeClientPage(mode) {
   const template = readFileSync(path.join(root, 'tools/cliente.template.html'), 'utf8');
-  const dir = path.join(root, 'docs/c/_e2e');
+  const dir = path.join(root, 'docs/c', `_e2e-${mode}`);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     path.join(dir, 'index.html'),
-    buildClientHtml({ template, pkg: clientPackage('service'), base })
+    buildClientHtml({ template, pkg: clientPackage(mode), base })
   );
 }
 
@@ -217,38 +223,69 @@ try {
   console.log('E2E evidencias: OK');
 
   /* ---------- versión cliente ---------- */
-  writeClientPage();
-  await waitForServer(`${serverUrl}/c/_e2e/`);
+  MODES.forEach(writeClientPage);
+  await waitForServer(`${serverUrl}/c/_e2e-service/`);
 
   const clientContext = await browser.newContext();
   const page = await clientContext.newPage();
   const clientErrors = watch(page);
 
-  await page.goto(`${serverUrl}/c/_e2e/`);
+  await page.goto(`${serverUrl}/c/_e2e-service/`);
   await page.waitForSelector('body.ready', { timeout: 10000 });
 
   assert.equal(await page.locator('input, textarea, select, [contenteditable="true"]').count(), 0, 'el cliente no debe tener controles de edición');
   assert.equal(await page.getByText('Editar', { exact: true }).count(), 0, 'no debe aparecer “Editar”');
   assert.equal(await page.locator('[data-action="print"]').count(), 1, 'debe existir Exportar PDF');
   assert.match(await page.locator('[data-date]').innerText(), /27 de octubre de 2026/);
-  assert.equal(await page.locator('[data-nav][href="#otros-trabajos"]').isHidden(), true, 'sin evidencia general no hay enlace');
 
+  const layout = {};
+  for (const mode of MODES) {
+    await page.goto(`${serverUrl}/c/_e2e-${mode}/`);
+    await page.waitForSelector('body.ready');
+    layout[mode] = {
+      service: await page.locator('.section-work:not(.section-general)').count(),
+      general: await page.locator('#otros-trabajos').count(),
+      navEvidence: await page.locator('[data-nav][href="#evidencia"]').isHidden(),
+      navGeneral: await page.locator('[data-nav][href="#otros-trabajos"]').isHidden()
+    };
+  }
+
+  assert.deepEqual(layout.service, { service: 1, general: 0, navEvidence: false, navGeneral: true }, 'modo servicio');
+  assert.deepEqual(layout.general, { service: 0, general: 1, navEvidence: true, navGeneral: false }, 'modo general');
+  assert.deepEqual(layout.both, { service: 1, general: 1, navEvidence: false, navGeneral: false }, 'modo ambas');
+  assert.deepEqual(layout.none, { service: 0, general: 0, navEvidence: true, navGeneral: true }, 'modo ocultar');
+
+  await page.goto(`${serverUrl}/c/_e2e-general/`);
+  await page.waitForSelector('body.ready');
+  await page.locator('#otros-trabajos [data-action="play-video"]').first().click();
+  await page.waitForSelector('#otros-trabajos .shot-frame video, #otros-trabajos .shot-frame iframe', { timeout: 5000 });
+  await page.locator('#otros-trabajos [data-action="lightbox"]').first().click();
+  await page.waitForSelector('#lightbox:not([hidden])');
+  await page.locator('.lb-close').click();
+  assert.equal(await page.locator('#lightbox').isHidden(), true, 'el lightbox general debe cerrarse');
+
+  await page.goto(`${serverUrl}/c/_e2e-service/`);
+  await page.waitForSelector('body.ready');
   await page.locator('[data-action="play-video"]').first().click();
   await page.waitForSelector('.shot-frame video', { timeout: 5000 });
   assert.ok((await page.locator('.shot-frame video').first().getAttribute('src')), 'el video debe tener src');
-
   await page.locator('[data-action="lightbox"]').first().click();
   await page.waitForSelector('#lightbox:not([hidden])');
   await page.locator('.lb-close').click();
   assert.equal(await page.locator('#lightbox').isHidden(), true, 'el lightbox debe cerrarse');
 
+  await page.goto(`${serverUrl}/c/_e2e-none/`);
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.evaluate(() => document.documentElement.innerHTML.includes('assets/media')), false, 'sin rutas de medios en el DOM');
+  assert.equal(await page.evaluate(() => JSON.stringify(window.__PANDORA__).includes('assets/media')), false, 'sin rutas de medios en el payload');
   assert.equal(await page.evaluate(() => Object.keys(localStorage).length), 0, 'el cliente no debe escribir en localStorage');
+
   assert.deepEqual(clientErrors, [], `errores en el cliente:\n${clientErrors.join('\n')}`);
   await clientContext.close();
   console.log('E2E cliente: OK');
 } finally {
   await browser.close();
   server.kill();
-  rmSync(path.join(root, 'docs/c/_e2e'), { recursive: true, force: true });
+  MODES.forEach((mode) => rmSync(path.join(root, 'docs/c', `_e2e-${mode}`), { recursive: true, force: true }));
   rmSync(path.join(root, 'tests/tmp'), { recursive: true, force: true });
 }

@@ -41,9 +41,81 @@
     return String(title || '').trim().slice(0, 1).toUpperCase();
   }
 
-  function showsServiceEvidence() {
-    if (!isRO()) return true;
+  const isEditor = () => !isRO() && OPTS.view === 'editor';
+
+  function showsService() {
+    if (isEditor()) return true;
     return OPTS.evidenceMode === 'service' || OPTS.evidenceMode === 'both';
+  }
+
+  function generalPieces() {
+    const general = OPTS.general || {};
+    return { videos: general.videos || [], images: general.images || [] };
+  }
+
+  function hasGeneral() {
+    const pieces = generalPieces();
+    return pieces.videos.length + pieces.images.length > 0;
+  }
+
+  function showsGeneral() {
+    if (!hasGeneral()) return false;
+    if (isEditor()) return true;
+    return OPTS.evidenceMode === 'general' || OPTS.evidenceMode === 'both';
+  }
+
+  function generalSection(num) {
+    const pieces = generalPieces();
+    const hidden = isEditor() && (OPTS.evidenceMode === 'service' || OPTS.evidenceMode === 'none');
+    const counts = `${pieces.videos.length} videos · ${pieces.images.length} piezas`;
+    return `<section class="section section-work section-general" id="otros-trabajos" aria-labelledby="h-general">
+      <header class="section-head">
+        <span class="num">${num}</span>
+        <h2 id="h-general">Otros trabajos</h2>
+        <span class="head-rule" aria-hidden="true"></span>
+        <span class="head-note">${counts}${hidden ? ' · <span class="mode-badge">Oculto en la versión cliente</span>' : ''}</span>
+      </header>
+
+      <div class="work-grid">
+        ${pieces.videos.map((video, vi) => `
+          <figure class="shot shot-${vi % 2 === 0 ? 'a' : 'b'}" data-video data-general="1" data-index="${vi}">
+            <div class="shot-frame">
+              ${video.poster
+                ? `<img src="${esc(asset(video.poster))}" alt="" loading="lazy" draggable="false">`
+                : `<div class="shot-empty">Sin portada</div>`}
+              <button class="play" data-action="play-video" data-general="1" data-index="${vi}"
+                      aria-label="Reproducir ${esc(video.title || 'video')}">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+                <span>Reproducir</span>
+              </button>
+              <span class="shot-tag">Video</span>
+            </div>
+            <figcaption class="shot-cap"><span class="txt">${esc(video.title)}</span></figcaption>
+          </figure>`).join('')}
+
+        ${pieces.images.map((image, ii) => `
+          <figure class="still" data-image>
+            <button class="still-link" data-action="lightbox" data-general="1" data-index="${ii}"
+                    aria-label="Ampliar ${esc(image.title || 'pieza')}">
+              <img src="${esc(asset(image.src))}" alt="${esc(image.title || '')}" loading="lazy" draggable="false">
+            </button>
+            <figcaption class="shot-cap"><span class="txt">${esc(image.title)}</span></figcaption>
+          </figure>`).join('')}
+      </div>
+
+      <p class="work-note print-only">Los videos completos están disponibles en la versión interactiva de esta cotización.</p>
+
+      <div class="print-stats print-only">
+        <div><span>Evidencia</span><strong>${counts}</strong></div>
+      </div>
+    </section>`;
+  }
+
+  function updateNav() {
+    const evidence = document.querySelector('[data-nav][href="#evidencia"]');
+    if (evidence) evidence.hidden = !showsService();
+    const general = document.querySelector('[data-nav][href="#otros-trabajos"]');
+    if (general) general.hidden = !showsGeneral();
   }
 
   /* ---------- capítulos ---------- */
@@ -55,7 +127,8 @@
     let n = 0;
     const nextNum = () => String(++n).padStart(2, '0');
     let html = '';
-    const withEvidence = showsServiceEvidence();
+    const withEvidence = showsService();
+    const hiddenService = isEditor() && (OPTS.evidenceMode === 'general' || OPTS.evidenceMode === 'none');
 
     quote.blocks.forEach((block, bi) => {
       const first = bi === 0;
@@ -140,7 +213,7 @@
             <span class="num">${nextNum()}</span>
             <h2 id="h-work-${bi}">Evidencia de trabajo</h2>
             <span class="head-rule" aria-hidden="true"></span>
-            <span class="head-note">${(block.videos || []).length} videos · ${(block.images || []).length} piezas</span>
+            <span class="head-note">${(block.videos || []).length} videos · ${(block.images || []).length} piezas${hiddenService ? ' · <span class="mode-badge">Oculto en la versión cliente</span>' : ''}</span>
           </header>
 
           <div class="work-grid">
@@ -188,7 +261,10 @@
       }
     });
 
+    if (showsGeneral()) html += generalSection(nextNum());
+
     host.innerHTML = html;
+    updateNav();
 
     const inversion = document.querySelector('#inversion .num');
     if (inversion) inversion.textContent = nextNum();
@@ -406,6 +482,7 @@
   function renderAll(quote, opts) {
     OPTS = Object.assign({}, DEFAULT_OPTS, opts || {});
     renderChapters(quote);
+    if (!document.getElementById('chapters')) updateNav();
     renderPrices(quote);
     renderSplit(quote);
     renderBank(quote);
