@@ -19,7 +19,12 @@
   function saveNow() {
     clearTimeout(saveTimer);
     const ok = store.save();
-    if (!ok) toast('No se pudo guardar en este navegador. Exporta los datos para no perderlos.');
+    const note = $('.edit-hint');
+    if (ok) {
+      if (note) note.textContent = `Guardado en este navegador · ${P.timeLabel(new Date().toISOString())}`;
+    } else {
+      toast('No se pudo guardar en este navegador. Descarga un respaldo desde Cotizaciones.');
+    }
   }
 
   function commit() {
@@ -322,35 +327,97 @@
     toast('Pieza eliminada.');
   }
 
-  /* ---------- importar / exportar ---------- */
+  /* ---------- biblioteca ---------- */
 
-  function exportJson() {
-    const slug = (quote.meta.client || 'cliente').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const blob = new Blob([JSON.stringify(quote, null, 2)], { type: 'application/json' });
+  const esc = P.render.esc;
+
+  function downloadJson(name, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `cotizacion-${slug}-${quote.meta.date || ''}.json`;
+    link.download = name;
     link.click();
     URL.revokeObjectURL(url);
-    toast('Datos exportados.');
   }
 
-  function importJson(file) {
+  function updateLibraryCount() {
+    $$('[data-library-count]').forEach((el) => { el.textContent = String(store.lib.quotes.length); });
+  }
+
+  function quoteServices(entry) {
+    const names = entry.quote.blocks.map((block) => block.serviceName || block.title);
+    return names.filter((value, index, arr) => arr.indexOf(value) === index).join(' + ');
+  }
+
+  function renderLibrary() {
+    const lib = store.lib;
+    $('#libraryList').innerHTML = lib.quotes.map((entry) => {
+      const q = entry.quote;
+      const url = q.meta.publishedUrl || '';
+      const state = q.meta.retiredAt ? 'retirada' : (url ? 'publicada' : 'sin publicar');
+      const stateLabel = state === 'retirada' ? 'Retirada' : (state === 'publicada' ? 'Publicada' : 'Sin publicar');
+      return `<div class="library-row${entry.id === lib.activeId ? ' is-active' : ''}" data-id="${esc(entry.id)}">
+        <button class="library-main" data-action="open-quote" data-id="${esc(entry.id)}"${entry.id === lib.activeId ? ' aria-current="true"' : ''}>
+          <span class="library-name">${esc(entry.name)}</span>
+          <span class="library-meta">${esc(quoteServices(entry))} · ${esc(P.dateLabel(q.meta.date))}</span>
+          ${url ? `<span class="library-url">${esc(url)}</span>` : ''}
+        </button>
+        <span class="status-pill status-${state}">${stateLabel}</span>
+        <div class="library-actions">
+          <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
+          <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('');
+    updateLibraryCount();
+  }
+
+  function switchQuote(id) {
+    if (!id || id === store.lib.activeId) return;
+    store.switchTo(id);
+    quote = store.quote;
+    refresh();
+    renderLibrary();
+  }
+
+  function backupLibrary() {
+    downloadJson(`pandora-biblioteca-${P.todayISO()}.json`, {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      activeId: store.lib.activeId,
+      evidenceBank: store.lib.evidenceBank,
+      quotes: store.lib.quotes
+    });
+    toast('Respaldo descargado. Guárdalo fuera del navegador.');
+  }
+
+  function importLibrary(file) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
-        if (!data || data.version !== 1 || !Array.isArray(data.blocks) || !data.blocks.length) {
+        if (!data || data.version !== 1 || !Array.isArray(data.quotes) || !data.quotes.length) {
           throw new Error('Formato no válido');
         }
-        quote = data;
+        if (!confirm('¿Reemplazar la biblioteca actual con este respaldo? Las cotizaciones actuales se perderán.')) return;
+        store.lib = {
+          version: 1,
+          activeId: data.activeId || data.quotes[0].id,
+          evidenceBank: data.evidenceBank || { videos: [], images: [] },
+          quotes: data.quotes
+        };
+        if (!store.lib.quotes.some((entry) => entry.id === store.lib.activeId)) {
+          store.lib.activeId = store.lib.quotes[0].id;
+        }
+        P.library.save(store.lib);
+        quote = P.library.active(store.lib).quote;
         store.quote = quote;
-        saveNow();
         refresh();
-        toast('Cotización importada.');
+        renderLibrary();
+        toast('Biblioteca importada.');
       } catch (err) {
-        toast('No pudimos leer ese archivo. Revisa que sea un JSON exportado desde este dashboard.');
+        toast('No pudimos leer ese respaldo. Revisa que sea un JSON exportado desde la matriz.');
       }
     };
     reader.readAsText(file);
@@ -394,8 +461,19 @@
       const serviceId = this.dataset.service;
       $('#serviceDialog').close();
       if (!pickCtx) return;
-      if (pickCtx.mode === 'replace') replaceBlock(pickCtx.block, serviceId);
-      else addBlock(serviceId);
+      if (pickCtx.mode === 'replace') {
+        replaceBlock(pickCtx.block, serviceId);
+      } else if (pickCtx.mode === 'new') {
+        const entry = P.library.add(store.lib, P.newQuote(serviceId));
+        quote = entry.quote;
+        store.quote = quote;
+        saveNow();
+        refresh();
+        renderLibrary();
+        toast('Cotización creada. Edita el nombre del cliente.');
+      } else {
+        addBlock(serviceId);
+      }
       pickCtx = null;
     },
     'close-service'() { $('#serviceDialog').close(); },
@@ -421,15 +499,60 @@
       );
     },
     reset() {
-      if (!confirm('¿Restablecer la cotización al ejemplo inicial? Se perderán los cambios guardados en este navegador.')) return;
-      quote = P.defaultQuote();
-      store.quote = quote;
-      saveNow();
+      if (!confirm('¿Restablecer esta cotización al ejemplo inicial? Se perderán los cambios de este cliente.')) return;
+      store.reset();
+      quote = store.quote;
       refresh();
       toast('Cotización restablecida.');
     },
-    'export-json'() { exportJson(); },
-    'import-json'() { $('#importFile').click(); }
+    'open-library'() {
+      renderLibrary();
+      $('#libraryDialog').showModal();
+    },
+    'close-library'() { $('#libraryDialog').close(); },
+    'open-quote'() {
+      switchQuote(this.dataset.id);
+      $('#libraryDialog').close();
+    },
+    'new-quote'() {
+      $('#libraryDialog').close();
+      pickCtx = { mode: 'new' };
+      $('#serviceDialog').showModal();
+    },
+    'duplicate-quote'() {
+      const entry = P.library.duplicate(store.lib, this.dataset.id);
+      if (!entry) return;
+      quote = entry.quote;
+      store.quote = quote;
+      saveNow();
+      refresh();
+      renderLibrary();
+      toast('Cotización duplicada.');
+    },
+    'delete-quote'() {
+      const id = this.dataset.id;
+      const entry = store.lib.quotes.find((item) => item.id === id);
+      if (!entry) return;
+      const warning = entry.quote.meta.publishedUrl
+        ? ' Esta cotización tiene una página publicada: eliminarla aquí no borra esa página.'
+        : '';
+      if (!confirm(`¿Eliminar “${entry.name}” de esta Mac?${warning}`)) return;
+      if (!P.library.remove(store.lib, id)) {
+        toast('Debe quedar al menos una cotización. Crea otra antes de eliminar esta.');
+        return;
+      }
+      if (!store.lib.quotes.some((item) => item.id === store.lib.activeId)) {
+        store.lib.activeId = store.lib.quotes[0].id;
+      }
+      P.library.save(store.lib);
+      quote = P.library.active(store.lib).quote;
+      store.quote = quote;
+      refresh();
+      renderLibrary();
+      toast('Cotización eliminada de este navegador.');
+    },
+    'backup-library'() { backupLibrary(); },
+    'import-library'() { $('#libraryFile').click(); }
   };
 
   /* ---------- arranque ---------- */
@@ -464,10 +587,6 @@
         quote.meta.date = event.target.value;
         P.render.sync(quote);
         saveNow();
-      }
-      if (event.target.id === 'importFile' && event.target.files[0]) {
-        importJson(event.target.files[0]);
-        event.target.value = '';
       }
     });
 
@@ -508,6 +627,12 @@
 
     $('#mediaDelete').addEventListener('click', deleteMedia);
 
+    $('#libraryFile').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) importLibrary(file);
+      event.target.value = '';
+    });
+
     // lightbox
     $('#lightbox').addEventListener('click', (event) => {
       if (event.target.id === 'lightbox') closeLightbox();
@@ -524,6 +649,7 @@
 
   function init() {
     quote = store.load();
+    updateLibraryCount();
     P.render.all(quote);
     bind();
     applyEditMode();

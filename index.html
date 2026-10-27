@@ -30,6 +30,11 @@
   </nav>
 
   <div class="topbar-actions">
+    <button class="btn ghost" data-action="open-library" aria-haspopup="dialog" aria-label="Cotizaciones guardadas">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      <span>Cotizaciones</span>
+      <span class="count" data-library-count>1</span>
+    </button>
     <button class="icon-btn" data-action="fullscreen" title="Pantalla completa" aria-label="Pantalla completa">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -196,9 +201,6 @@
         </p>
         <div class="edit-only edit-tools">
           <button class="btn small ghost" data-action="reset">Restablecer</button>
-          <button class="btn small ghost" data-action="export-json">Exportar datos</button>
-          <button class="btn small ghost" data-action="import-json">Importar datos</button>
-          <input type="file" id="importFile" accept="application/json" hidden>
         </div>
       </div>
     </div>
@@ -280,10 +282,26 @@
   </div>
 </dialog>
 
+<dialog class="sheet sheet-wide" id="libraryDialog">
+  <div class="sheet-form">
+    <h2 class="sheet-title">Cotizaciones</h2>
+    <p class="sheet-sub">Cada cliente guarda su propia propuesta en este navegador.</p>
+    <div class="library-list" id="libraryList"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" data-action="backup-library">Respaldar</button>
+      <button class="btn ghost" data-action="import-library">Importar respaldo</button>
+      <input type="file" id="libraryFile" accept="application/json" hidden>
+      <span class="grow"></span>
+      <button class="btn ghost" data-action="new-quote">Nueva cotización</button>
+      <button class="btn primary" data-action="close-library">Listo</button>
+    </div>
+  </div>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 
-<p class="edit-hint edit-only">Haz clic en cualquier texto para editarlo. Los cambios se guardan en este navegador.</p>
+<p class="edit-hint edit-only">Guardado en este navegador</p>
 
 <script>window.P = { assetBase: 'docs/' };</script>
 <script src="docs/app/core.js"></script>

@@ -7,7 +7,8 @@
   const core = isNode ? require('../docs/app/core.js') : root.P;
   const api = factory(core || {});
   if (isNode) {
-    module.exports = api;
+    Object.assign(core, api);
+    module.exports = core;
   } else {
     root.P = Object.assign(root.P || {}, api);
   }
@@ -240,6 +241,7 @@
     return {
       uid: uid('b'),
       serviceId: service.id,
+      serviceName: service.name,
       title: service.title,
       tagline: service.tagline,
       duration: service.duration,
@@ -254,7 +256,9 @@
 
   function defaultQuote() {
     return {
-      version: 1,
+      version: 2,
+      id: '',
+      evidence: { mode: 'service', generalIds: { videos: [], images: [] } },
       meta: {
         quoteNo: 'OCT26-23',
         date: '2026-10-23',
@@ -269,6 +273,11 @@
           { label: 'Al mes siguiente', pct: 40 }
         ],
         closing: 'Estamos listos para empezar cuando tú lo estés. Cualquier ajuste al alcance se conversa antes de la firma.',
+        slug: '',
+        generatedAt: '',
+        publishedUrl: '',
+        publishedAt: '',
+        retiredAt: '',
         conditions: [
           'La proforma tiene una vigencia de 30 días desde la fecha de emisión.',
           'Los precios están expresados en soles peruanos y no incluyen I.G.V. salvo indicación contraria.',
@@ -287,10 +296,27 @@
     };
   }
 
+  function newQuote(serviceId) {
+    const quote = defaultQuote();
+    quote.meta.client = 'Cliente sin nombre';
+    quote.meta.quoteNo = '';
+    quote.meta.lede = 'Propuesta de marketing con propósito.';
+    quote.meta.date = core.todayISO ? core.todayISO() : new Date().toISOString().slice(0, 10);
+    quote.meta.slug = '';
+    quote.meta.publishedUrl = '';
+    quote.meta.publishedAt = '';
+    quote.meta.retiredAt = '';
+    quote.evidence = { mode: 'service', generalIds: { videos: [], images: [] } };
+    const block = blockFromService(serviceId) || blockFromService('metaads');
+    quote.blocks = [block];
+    return quote;
+  }
+
   return {
     catalog,
     blockFromService,
     defaultQuote,
+    newQuote,
     clone
   };
 });
