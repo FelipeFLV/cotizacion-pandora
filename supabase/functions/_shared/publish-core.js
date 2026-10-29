@@ -67,7 +67,8 @@ export async function publishQuote(options) {
   if (!quoteId) throw new HttpError(400, 'Falta la cotización que se quiere publicar.');
 
   const { data: row, error: rowError } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
-  if (rowError || !row) throw new HttpError(404, 'No existe la cotización.');
+  if (rowError && rowError.code !== 'PGRST116') throw new HttpError(500, 'No se pudo leer la cotización.');
+  if (!row) throw new HttpError(404, 'No existe la cotización.');
   if (row.owner_id !== user.id) throw new HttpError(403, 'Esa cotización no te pertenece.');
   if (row.is_template) throw new HttpError(400, 'Una plantilla no se puede publicar: crea un cliente a partir de ella.');
   if (row.archived_at) throw new HttpError(400, 'La cotización está archivada.');

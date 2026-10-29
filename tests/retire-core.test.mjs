@@ -33,7 +33,7 @@ function fakeSupabase(state) {
       if (single) {
         return rows.length === 1
           ? { data: clone(rows[0]), error: null }
-          : { data: null, error: new Error('sin filas') };
+          : { data: null, error: { code: 'PGRST116', message: 'sin filas' } };
       }
       if (maybe) return { data: rows.length ? clone(rows[0]) : null, error: null };
       return { data: rows.map(clone), error: null };
@@ -193,4 +193,28 @@ test('an already empty folder needs no commit but still marks the quote', async 
   assert.equal(result.deletions, 0);
   assert.equal(github.calls.some((call) => call.type === 'commit'), false);
   assert.equal(state.quotes[0].status, 'retired');
+});
+
+function brokenReader(supabase, code) {
+  return Object.assign({}, supabase, {
+    from(name) {
+      if (name !== 'quotes') return supabase.from(name);
+      return {
+        select() { return this; },
+        eq() { return this; },
+        single() { return Promise.resolve({ data: null, error: { code, message: 'permission denied' } }); }
+      };
+    }
+  });
+}
+
+test('a database error is reported as a failure, not as a missing quote', async () => {
+  const { supabase } = setup();
+  const github = fakeGithub();
+  await assert.rejects(run(brokenReader(supabase, '42501'), github), (error) => {
+    assert.equal(error.status, 500);
+    assert.match(error.message, /no se pudo leer/i);
+    return true;
+  });
+  assert.equal(github.calls.length, 0);
 });

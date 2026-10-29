@@ -41,7 +41,7 @@ function fakeSupabase(state) {
       if (single) {
         return rows.length === 1
           ? { data: clone(rows[0]), error: null }
-          : { data: null, error: new Error('sin filas') };
+          : { data: null, error: { code: 'PGRST116', message: 'sin filas' } };
       }
       if (maybe) return { data: rows.length ? clone(rows[0]) : null, error: null };
       return { data: rows.map(clone), error: null };
@@ -251,4 +251,36 @@ test('bank evidence is downloaded and rendered for the client', async () => {
     `docs/assets/c/${state.quotes[0].slug}/m2.png`,
     `docs/c/${state.quotes[0].slug}/index.html`
   ]);
+});
+
+function brokenReader(supabase, code) {
+  return Object.assign({}, supabase, {
+    from(name) {
+      if (name !== 'quotes') return supabase.from(name);
+      return {
+        select() { return this; },
+        eq() { return this; },
+        single() { return Promise.resolve({ data: null, error: { code, message: 'permission denied' } }); }
+      };
+    }
+  });
+}
+
+test('a database error is reported as a failure, not as a missing quote', async () => {
+  const { supabase } = setup();
+  const github = fakeGithub();
+  await assert.rejects(run(null, brokenReader(supabase, '42501'), github), (error) => {
+    assert.equal(error.status, 500);
+    assert.match(error.message, /no se pudo leer/i);
+    return true;
+  });
+  assert.equal(github.calls.length, 0);
+});
+
+test('a quote that does not exist is still a 404', async () => {
+  const { supabase } = setup();
+  await assert.rejects(run(null, brokenReader(supabase, 'PGRST116')), (error) => {
+    assert.equal(error.status, 404);
+    return true;
+  });
 });
