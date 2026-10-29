@@ -7,3 +7,6 @@ tests/tmp/
 docs/c/_e2e*/
 pandora-*.json
 pandora-biblioteca-*.json
+.env
+.env.*
+supabase/.temp/

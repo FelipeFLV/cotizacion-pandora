@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; img-src 'self' data: https://zvusvaotqtchaglwyifl.supabase.co; media-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Panel de cotizaciones · Pandora</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<header class="admin-bar">
+  <div class="admin-brand">
+    <span class="admin-mark" aria-hidden="true">P</span>
+    <span class="admin-name">Pandora</span>
+    <span class="admin-sep" aria-hidden="true"></span>
+    <span class="admin-title">Cotizaciones</span>
+  </div>
+  <div class="admin-actions">
+    <span class="admin-user" id="who"></span>
+    <button class="admin-signout" id="signout" type="button" hidden>Cerrar sesión</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <section class="admin-login" id="login">
+    <p class="admin-kicker">Acceso privado</p>
+    <h1>Entra con tu correo</h1>
+    <p class="admin-lead">Te enviamos un enlace de un solo uso. Ábrelo en este mismo navegador.</p>
+    <form id="login-form" novalidate>
+      <label for="email">Correo autorizado</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <button type="submit">Enviar enlace</button>
+    </form>
+    <p class="admin-status" id="login-status" role="status" hidden></p>
+  </section>
+
+  <section class="admin-panel" id="panel" hidden>
+    <p class="admin-kicker">Panel</p>
+    <h1>Tus cotizaciones</h1>
+    <p class="admin-lead">Todo lo que prepares aquí queda privado hasta que publiques.</p>
+    <div class="admin-list" id="quote-list"></div>
+  </section>
+</main>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

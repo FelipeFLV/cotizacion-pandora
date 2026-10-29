@@ -1,0 +1,187 @@
+/* ==========================================================================
+   Panel privado de cotizaciones — solo escritorio.
+   Misma paleta y tipografía que la matriz, sin adaptaciones móviles.
+   ========================================================================== */
+
+:root {
+  --ink: #28363B;
+  --ink-2: #4C5C62;
+  --ink-3: #7C8B90;
+  --paper: #F8F7F5;
+  --paper-2: #F1F0ED;
+  --white: #FFFFFF;
+  --purple: #4600BB;
+  --purple-dark: #35008F;
+  --mint: #BFE0C8;
+  --lilac: #CBB8F0;
+  --line: rgba(40, 54, 59, .16);
+  --line-soft: rgba(40, 54, 59, .09);
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(.22, .8, .28, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 1024px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.admin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 40px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.admin-brand { display: flex; align-items: center; gap: 12px; }
+
+.admin-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--purple);
+  color: var(--white);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.admin-name { font-family: var(--serif); font-size: 20px; letter-spacing: -.01em; }
+
+.admin-sep { width: 1px; height: 18px; background: var(--line); }
+
+.admin-title {
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.admin-actions { display: flex; align-items: center; gap: 18px; }
+
+.admin-user { font-size: 13px; color: var(--ink-2); }
+
+.admin-signout {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: transparent;
+  font-size: 13px;
+  transition: border-color .2s var(--ease), color .2s var(--ease);
+}
+.admin-signout:hover { border-color: var(--ink); color: var(--ink); }
+
+.admin-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 72px 40px 120px;
+}
+
+.admin-kicker {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.admin-main h1 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+}
+
+.admin-lead {
+  margin: 0 0 32px;
+  max-width: 52ch;
+  color: var(--ink-2);
+}
+
+.admin-login {
+  max-width: 460px;
+  padding: 40px;
+  background: var(--white);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+}
+
+.admin-login h1 { font-size: 30px; }
+
+.admin-login label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.admin-login input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+}
+.admin-login input:focus { border-color: var(--purple); outline: none; }
+
+.admin-login button {
+  margin-top: 18px;
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--purple);
+  color: var(--white);
+  font-size: 14px;
+  letter-spacing: .02em;
+  transition: background .2s var(--ease);
+}
+.admin-login button:hover { background: var(--purple-dark); }
+.admin-login button:disabled { opacity: .55; cursor: progress; }
+
+.admin-status {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 3px;
+  background: var(--paper-2);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.admin-status[data-kind="ok"] { background: var(--mint); color: #1F4530; }
+.admin-status[data-kind="error"] { background: #F6E3E0; color: #7A2A1E; }
+.admin-status[data-kind="busy"] { color: var(--ink-3); }
+
+.admin-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
