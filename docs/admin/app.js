@@ -119,13 +119,49 @@
     paintHeader(entry || row);
   }
 
-  function mountEditor(row) {
+  async function signedMapFor(quote, bank) {
+    const ids = new Set(PADMIN.modelMedia.refs(quote, { videos: [], images: [] }));
+    (bank || []).forEach((item) => {
+      if (item.media_id) ids.add(item.media_id);
+    });
+    const list = Array.from(ids);
+    if (!list.length) return {};
+    const rows = await PADMIN.api.getMedia(list);
+    const urls = await Promise.all(
+      rows.map((media) => PADMIN.api.signedUrl(media.storage_path).catch(() => ''))
+    );
+    const map = {};
+    rows.forEach((media, index) => {
+      if (urls[index]) map[media.id] = urls[index];
+    });
+    return map;
+  }
+
+  async function mountEditor(row) {
     const box = $('editor');
     const quote = PADMIN.model.rowToQuote(row);
-    state.editing = { id: row.id, quote };
+    const id = row.id;
+    state.editing = { id, quote, loading: true };
+    box.innerHTML = `${headerHtml(row)}<div class="editor-body" id="editor-body">
+      <p class="editor-loading">Cargando evidencias…</p>
+    </div>`;
+
+    let bank = [];
+    let signedMap = {};
+    try {
+      bank = await PADMIN.api.listBankItems();
+      signedMap = await signedMapFor(quote, bank);
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+    if (!state.editing || state.editing.id !== id) return;
+    state.editing.loading = false;
+
     box.innerHTML = `${headerHtml(row)}<div class="editor-body" id="editor-body"></div>`;
     PADMIN.editor.mount($('editor-body'), {
       quote,
+      bank,
+      signedMap,
       onChange(next) {
         state.editing.quote = next;
         const entry = state.quotes.find((item) => item.id === row.id);

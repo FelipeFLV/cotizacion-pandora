@@ -192,6 +192,18 @@
       );
     },
 
+    async userId() {
+      return currentUserId();
+    },
+
+    async addMedia(media) {
+      const owner = await currentUserId();
+      return one(
+        ready().from('media').insert(Object.assign({ owner_id: owner }, media)).select().single(),
+        'No se pudo registrar la imagen.'
+      );
+    },
+
     async getMedia(ids) {
       const list = (ids || []).filter(Boolean);
       if (!list.length) return [];

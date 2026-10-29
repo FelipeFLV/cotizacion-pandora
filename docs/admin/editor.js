@@ -17,15 +17,18 @@
   let statusNode = null;
   let savedAt = '';
   let lastError = '';
+  let bank = [];
+  let signedMap = {};
 
   function hhmm() {
     const now = new Date();
     return [String(now.getHours()).padStart(2, '0'), String(now.getMinutes()).padStart(2, '0')].join(':');
   }
 
-  function status(text, kind) {
+  function status(text, kind, canRetry) {
     if (!statusNode) return;
-    statusNode.innerHTML = `${esc(text)}${kind === 'error' ? ' <button class="mini" data-op="retry-save" type="button">Reintentar</button>' : ''}`;
+    const retry = canRetry == null ? kind === 'error' : canRetry;
+    statusNode.innerHTML = `${esc(text)}${retry ? ' <button class="mini" data-op="retry-save" type="button">Reintentar</button>' : ''}`;
     statusNode.dataset.kind = kind || '';
     statusNode.hidden = !text;
   }
@@ -141,7 +144,10 @@
   }
 
   function evidenceSection() {
-    return section('evidencias', 'Evidencias', `<p class="section-note">Los videos y las imágenes se administran en la sección de evidencias del panel.</p>`);
+    const body = PADMIN.evidence
+      ? PADMIN.evidence.render({ quote: current, bank, signedMap })
+      : '<p class="section-note">El gestor de evidencias no está disponible.</p>';
+    return section('evidencias', 'Evidencias', body);
   }
 
   function publishSection() {
@@ -229,7 +235,103 @@
     scheduleSave();
   }
 
-  function onOp(op, node) {
+  function storagePath(path) {
+    const match = String(path || '').match(/^blocks\.(\d+)\./);
+    return match ? Number(match[1]) : -1;
+  }
+
+  function serviceName(path) {
+    const index = storagePath(path);
+    const block = index >= 0 && current.blocks ? current.blocks[index] : null;
+    return block ? block.title || '' : '';
+  }
+
+  function evError(path, message) {
+    if (!host || !path) return;
+    const node = host.querySelector(`[data-ev-error="${path}"]`);
+    if (!node) return;
+    node.textContent = message || '';
+    node.hidden = !message;
+  }
+
+  async function addToBank(node) {
+    const path = node.dataset.path;
+    const list = PADMIN.evidence.listAt(current, path);
+    const piece = list && list[Number(node.dataset.index)];
+    if (!piece) return;
+    const kind = /\.videos$/.test(path) ? 'video' : 'image';
+    const title = piece.title || (kind === 'video' ? 'Video' : 'Imagen');
+    try {
+      status('Guardando en el banco…', 'busy');
+      await PADMIN.api.addBankItem(PADMIN.media.toBankItem(piece, kind, title, serviceName(path)));
+      bank = await PADMIN.api.listBankItems();
+      render();
+      status('Pieza añadida al banco.', '');
+    } catch (error) {
+      status(error.message, 'error', false);
+    }
+  }
+
+  async function removeFromBank(node) {
+    const id = node.dataset.id;
+    if (!id) return;
+    if (!root.confirm('¿Quitar esta pieza del banco? Dejará de mostrarse donde esté marcada.')) return;
+    try {
+      await PADMIN.api.removeBankItem(id);
+      bank = await PADMIN.api.listBankItems();
+      render();
+      status('Pieza quitada del banco.', '');
+    } catch (error) {
+      status(error.message, 'error', false);
+    }
+  }
+
+  async function uploadFile(input, file) {
+    const path = input.dataset.evFile;
+    try {
+      status('Comprimiendo y subiendo…', 'busy');
+      const media = await PADMIN.media.upload(file);
+      signedMap[media.id] = media.signed || '';
+      const title = String(file.name || '').replace(/\.[^.]+$/, '');
+      current = PADMIN.evidence.appendPiece(current, path, { title, src: media.src, poster: '' });
+      try {
+        await PADMIN.api.addBankItem(
+          PADMIN.media.toBankItem({ mediaId: media.id, src: media.src }, 'image', title, serviceName(path))
+        );
+        bank = await PADMIN.api.listBankItems();
+      } catch (error) {
+        // La pieza ya está en la cotización; el banco es opcional.
+      }
+      render();
+      if (onChange) onChange(current);
+      scheduleSave();
+      status('Imagen subida.', '');
+    } catch (error) {
+      status(error.message, 'error', false);
+      evError(path, error.message);
+    }
+  }
+
+  async function onEvidence(op, node) {
+    if (op === 'ev-bank-add') return addToBank(node);
+    if (op === 'ev-bank-remove') return removeFromBank(node);
+    if (op === 'ev-add-video' || op === 'ev-add-image') {
+      const input = node.parentElement && node.parentElement.querySelector('[data-ev-input]');
+      const value = input ? input.value.trim() : '';
+      const error = op === 'ev-add-video' ? PADMIN.media.videoError(value) : PADMIN.media.imageError(value);
+      if (error) return evError(node.dataset.path, error);
+      evError(node.dataset.path, '');
+    }
+    const next = PADMIN.evidence.op(op, current, node);
+    if (next === current) return;
+    current = next;
+    render();
+    if (onChange) onChange(current);
+    scheduleSave();
+  }
+
+  async function onOp(op, node) {
+    if (/^ev-/.test(op)) return onEvidence(op, node);
     const index = Number(node.dataset.index);
     let next = current;
     if (op === 'block-add') next = M.addBlock(current);
@@ -255,17 +357,26 @@
     current = options.quote;
     onChange = options.onChange;
     save = options.save;
+    bank = options.bank || [];
+    signedMap = options.signedMap || {};
     savedAt = '';
     lastError = '';
     render();
 
     host.addEventListener('input', onInput);
-    host.addEventListener('click', (event) => {
+    host.addEventListener('click', async (event) => {
       const op = event.target.closest('[data-op]');
       if (!op) return;
       event.preventDefault();
       if (op.dataset.op === 'retry-save') return flush();
-      onOp(op.dataset.op, op);
+      await onOp(op.dataset.op, op);
+    });
+    host.addEventListener('change', async (event) => {
+      const input = event.target.closest('[data-ev-file]');
+      if (!input || !input.files || !input.files[0]) return;
+      const file = input.files[0];
+      await uploadFile(input, file);
+      input.value = '';
     });
   }
 
