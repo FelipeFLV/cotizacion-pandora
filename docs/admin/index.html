@@ -19,31 +19,38 @@
     <span class="admin-title">Cotizaciones</span>
   </div>
   <div class="admin-actions">
+    <button class="admin-ghost" id="import-open" type="button" hidden>Importar respaldo</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
     <span class="admin-user" id="who"></span>
-    <button class="admin-signout" id="signout" type="button" hidden>Cerrar sesión</button>
+    <button class="admin-signout" id="signout" type="button" hidden>Salir</button>
   </div>
 </header>
 
-<main class="admin-main">
-  <section class="admin-login" id="login">
-    <p class="admin-kicker">Acceso privado</p>
-    <h1>Entra con tu correo</h1>
-    <p class="admin-lead">Te enviamos un enlace de un solo uso. Ábrelo en este mismo navegador.</p>
-    <form id="login-form" novalidate>
-      <label for="email">Correo autorizado</label>
-      <input id="email" name="email" type="email" autocomplete="email" required>
-      <button type="submit">Enviar enlace</button>
-    </form>
-    <p class="admin-status" id="login-status" role="status" hidden></p>
-  </section>
+<section class="admin-login" id="login">
+  <p class="admin-kicker">Acceso privado</p>
+  <h1>Entra con tu correo</h1>
+  <p class="admin-lead">Te enviamos un enlace de un solo uso. Ábrelo en este mismo navegador.</p>
+  <form id="login-form" novalidate>
+    <label for="email">Correo autorizado</label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <button type="submit">Enviar enlace</button>
+  </form>
+  <p class="admin-status" id="login-status" role="status" hidden></p>
+</section>
 
-  <section class="admin-panel" id="panel" hidden>
-    <p class="admin-kicker">Panel</p>
-    <h1>Tus cotizaciones</h1>
-    <p class="admin-lead">Todo lo que prepares aquí queda privado hasta que publiques.</p>
-    <div class="admin-list" id="quote-list"></div>
-  </section>
+<main class="admin-shell" id="panel" hidden>
+  <aside class="admin-side">
+    <div class="side-head">
+      <input id="search" type="search" placeholder="Buscar cliente" aria-label="Buscar cliente">
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="quote-list" id="quote-list"></div>
+    <p class="side-foot" id="list-count"></p>
+  </aside>
+  <section class="admin-editor" id="editor"></section>
 </main>
+
+<p class="admin-toast" id="toast" role="status" hidden></p>
 
 <script src="vendor/supabase.js"></script>
 <script src="../app/core.js"></script>
@@ -51,6 +58,7 @@
 <script src="auth.js"></script>
 <script src="model.js"></script>
 <script src="api.js"></script>
+<script src="library.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

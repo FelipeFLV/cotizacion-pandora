@@ -217,6 +217,28 @@
       return path;
     },
 
+    async importBackup(json) {
+      const owner = await currentUserId();
+      const parsed = PADMIN.model.fromBackup(json, owner);
+      const quotes = await one(
+        ready().from('quotes').insert(parsed.quotes).select(),
+        'No se pudieron importar las cotizaciones.'
+      );
+      if (parsed.versions.length) {
+        await one(
+          ready().from('quote_versions').insert(parsed.versions),
+          'No se pudo importar el historial.'
+        );
+      }
+      if (parsed.bank.length) {
+        await one(
+          ready().from('bank_items').insert(parsed.bank),
+          'No se pudo importar la biblioteca de evidencias.'
+        );
+      }
+      return { quotes, versions: parsed.versions.length, bank: parsed.bank.length };
+    },
+
     async listBankItems() {
       return one(
         ready().from('bank_items').select('*').order('created_at', { ascending: false }),
