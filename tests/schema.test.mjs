@@ -43,3 +43,22 @@ test('the template is protected', () => {
   assert.match(schema, /quotes_protect_template/);
   assert.match(schema, /quote_versions_prune/);
 });
+
+test('the Edge Functions can read and write through service_role', () => {
+  const grants = read('20261029000005_service_role_grants.sql');
+  assert.match(grants, /grant usage on schema public to service_role/i);
+  const expected = {
+    quotes: 'select, update',
+    media: 'select',
+    bank_items: 'select',
+    quote_versions: 'select, insert, delete',
+    publish_jobs: 'select, insert, update'
+  };
+  Object.keys(expected).forEach((table) => {
+    assert.match(
+      grants,
+      new RegExp(`grant ${expected[table]} on public\\.${table} to service_role`, 'i'),
+      table
+    );
+  });
+});
