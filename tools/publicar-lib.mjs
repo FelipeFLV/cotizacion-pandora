@@ -1,11 +1,18 @@
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  clientData,
+  buildClientHtml,
+  resolveSlug,
+  validatePackage
+} from '../supabase/functions/_shared/render.js';
+
+export { clientData, buildClientHtml, resolveSlug, validatePackage };
 
 const require = createRequire(import.meta.url);
 const P = require('../docs/app/core.js');
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const QUOTE_ID_RE = /name="pandora-quote-id" content="([^"]*)"/;
 const LEGACY_PAGE_ID = 'q_legacy_hs';
 
@@ -16,81 +23,6 @@ const MEDIA_REASON = {
   scheme: 'usa un esquema no permitido',
   missing: 'no existe dentro de docs/'
 };
-
-function escapeHtml(value) {
-  return String(value == null ? '' : value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function fillTokens(template, values) {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => (values[key] == null ? '' : values[key]));
-}
-
-export function clientData(quote, general, generatedAt) {
-  return JSON.stringify({
-    quote,
-    general: general || { videos: [], images: [] },
-    meta: { generatedAt: generatedAt || '' }
-  })
-    .replace(/</g, '\\u003c')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-}
-
-export function buildClientHtml({ template, pkg, base }) {
-  const quote = pkg.quote;
-  const date = quote.meta.date || '';
-  return fillTokens(template, {
-    TITLE: escapeHtml(`Propuesta · ${quote.meta.client || 'Pandora Marketing'}`),
-    DESCRIPTION: escapeHtml('Propuesta de Pandora Marketing: alcance, evidencia e inversión.'),
-    QUOTE_ID: escapeHtml(quote.id || pkg.slug),
-    GENERATED_AT: escapeHtml(pkg.generatedAt || ''),
-    DATE_ISO: escapeHtml(date),
-    DATE_LABEL: escapeHtml(P.dateLabel(date)),
-    BASE: base || '../../',
-    DATA: clientData(quote, pkg.general, pkg.generatedAt)
-  });
-}
-
-export function resolveSlug(pkg) {
-  const slug = String((pkg && (pkg.slug || (pkg.quote && pkg.quote.meta && pkg.quote.meta.slug))) || '');
-  if (!SLUG_RE.test(slug)) {
-    throw new Error(`Slug inválido: "${slug}". Usa minúsculas, números y guiones (2 a 64 caracteres).`);
-  }
-  return slug;
-}
-
-export function validatePackage(pkg) {
-  const errors = [];
-  if (!pkg || typeof pkg !== 'object') return ['El paquete no es un objeto JSON.'];
-  if (pkg.kind !== 'pandora-cliente') errors.push('El paquete no es de tipo pandora-cliente.');
-
-  const quote = pkg.quote;
-  if (!quote || typeof quote !== 'object') {
-    errors.push('Falta la cotización.');
-  } else {
-    if (!quote.meta || !String(quote.meta.client || '').trim()) errors.push('La cotización no tiene cliente.');
-    if (!Array.isArray(quote.blocks) || !quote.blocks.length) errors.push('La cotización no tiene servicios.');
-    if (!quote.id) errors.push('La cotización no tiene identificador.');
-  }
-
-  if (pkg.version !== 1) errors.push('La versión del paquete no es compatible.');
-
-  try {
-    resolveSlug(pkg);
-  } catch (error) {
-    errors.push(error.message);
-  }
-
-  if (typeof pkg.generatedAt !== 'string' || !pkg.generatedAt || Number.isNaN(new Date(pkg.generatedAt).getTime())) {
-    errors.push('Falta la fecha de generación del paquete.');
-  }
-
-  return errors;
-}
 
 export function validateRetiro(pkg) {
   const errors = [];
