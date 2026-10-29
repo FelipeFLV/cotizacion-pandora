@@ -28,6 +28,15 @@ test('storage policies scope by user folder', () => {
   assert.equal((storage.match(/create policy/g) || []).length, 4);
 });
 
+test('the Data API exposes only authenticated through grants', () => {
+  const grants = read('20261028000004_grants.sql');
+  assert.match(grants, /grant usage on schema public to authenticated/i);
+  for (const table of TABLES) {
+    assert.match(grants, new RegExp(`grant [a-z, ]+ on public\\.${table} to authenticated`, 'i'), table);
+    assert.match(grants, new RegExp(`revoke all on public\\.${table} from anon`, 'i'), table);
+  }
+});
+
 test('the template is protected', () => {
   const schema = read('20261028000001_schema.sql');
   assert.match(schema, /template_not_archived/);
