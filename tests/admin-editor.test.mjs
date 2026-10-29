@@ -43,8 +43,8 @@ function quote() {
         title: 'Meta Ads',
         deliverables: ['Campañas'],
         considerations: [],
-        process: [],
-        items: [{ concept: 'Gestión', amount: 1000 }]
+        process: [{ title: 'Brief y accesos', detail: 'Revisamos objetivos.' }],
+        items: [{ label: 'Gestión', amount: 1000 }]
       }
     ]
   };
@@ -89,6 +89,38 @@ test('items can be added and removed but never left empty', () => {
   q = E.removeItem(q, 0, 1);
   assert.equal(q.blocks[0].items.length, 1);
   assert.equal(E.removeItem(quote(), 0, 0).blocks[0].items.length, 1);
+});
+
+test('an added line is named label, the field the client page prints', () => {
+  const item = E.addItem(quote(), 0).blocks[0].items[1];
+  assert.equal(item.label, 'Nuevo concepto');
+  assert.equal(item.amount, 0);
+  assert.deepEqual(Object.keys(item).sort(), ['amount', 'label']);
+});
+
+test('process steps keep title and detail as separate fields', () => {
+  const q = E.addStep(quote(), 0);
+  assert.equal(q.blocks[0].process.length, 2);
+  const step = q.blocks[0].process[1];
+  assert.equal(step.title, 'Nuevo paso');
+  assert.equal(step.detail, '');
+  assert.deepEqual(Object.keys(step).sort(), ['detail', 'title']);
+
+  const removed = E.removeStep(q, 0, 0);
+  assert.equal(removed.blocks[0].process.length, 1);
+  assert.equal(removed.blocks[0].process[0].title, 'Nuevo paso');
+  assert.equal(removed.blocks[0].process[0].detail, '');
+});
+
+test('the editor writes only the fields the client page renders', () => {
+  const editor = readFileSync(new URL('../docs/admin/editor.js', import.meta.url), 'utf8');
+  assert.match(editor, /items\.\$\{itemIndex\}\.label/);
+  assert.doesNotMatch(editor, /\.concept/);
+  assert.match(editor, /process\.\$\{si\}\.title/);
+  assert.match(editor, /process\.\$\{si\}\.detail/);
+  assert.doesNotMatch(editor, /F\.list\(\{ path: `\$\{base\}\.process`/);
+  assert.match(editor, /data-op="step-add"/);
+  assert.match(editor, /data-op="step-del"/);
 });
 
 test('payments must total 100', () => {

@@ -65,9 +65,15 @@
   function blockSection(block, index) {
     const base = `blocks.${index}`;
     const lines = (block.items || []).map((item, itemIndex) => `<tr>
-      <td><input data-field="${base}.items.${itemIndex}.concept" value="${esc(item.concept)}" aria-label="Concepto"></td>
+      <td><input data-field="${base}.items.${itemIndex}.label" value="${esc(item.label)}" aria-label="Concepto"></td>
       <td class="cell-money"><span class="money-wrap"><em>S/</em><input data-field="${base}.items.${itemIndex}.amount" type="number" step="0.01" min="0" value="${esc(item.amount)}" aria-label="Monto"></span></td>
       <td class="cell-tools"><button class="mini" data-op="item-del" data-index="${index}" data-item="${itemIndex}" type="button" aria-label="Quitar línea">×</button></td>
+    </tr>`).join('');
+
+    const steps = (block.process || []).map((step, si) => `<tr>
+      <td><input data-field="${base}.process.${si}.title" value="${esc(step && step.title)}" aria-label="Título del paso"></td>
+      <td><input data-field="${base}.process.${si}.detail" value="${esc(step && step.detail)}" aria-label="Detalle del paso"></td>
+      <td class="cell-tools"><button class="mini" data-op="step-del" data-index="${index}" data-step="${si}" type="button" aria-label="Quitar paso">×</button></td>
     </tr>`).join('');
 
     return `<article class="block-edit" data-block="${index}">
@@ -85,7 +91,13 @@
         ${F.text({ path: `${base}.duration`, label: 'Duración', value: block.duration })}
         ${F.list({ path: `${base}.deliverables`, label: 'Entregables', items: block.deliverables })}
         ${F.list({ path: `${base}.considerations`, label: 'Consideraciones', items: block.considerations })}
-        ${F.list({ path: `${base}.process`, label: 'Proceso', items: block.process })}
+      </div>
+      <div class="items-edit">
+        <span class="items-title">Proceso</span>
+        <table class="items-table">
+          <tbody>${steps || '<tr><td colspan="3" class="items-empty">Sin pasos.</td></tr>'}</tbody>
+        </table>
+        <button class="mini" data-op="step-add" data-index="${index}" type="button">Añadir paso</button>
       </div>
       <div class="items-edit">
         <span class="items-title">Líneas de inversión</span>
@@ -355,6 +367,8 @@
     else if (op === 'block-del') next = M.removeBlock(current, index);
     else if (op === 'item-add') next = M.addItem(current, index);
     else if (op === 'item-del') next = M.removeItem(current, index, Number(node.dataset.item));
+    else if (op === 'step-add') next = M.addStep(current, index);
+    else if (op === 'step-del') next = M.removeStep(current, index, Number(node.dataset.step));
     else if (op === 'pay-add') next = M.addPayment(current);
     else if (op === 'pay-del') next = M.removePayment(current, index);
     else if (op === 'cond-add') next = M.addCondition(current);

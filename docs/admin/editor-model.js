@@ -88,7 +88,24 @@
     const block = (out.blocks || [])[index];
     if (!block) return out;
     block.items = block.items || [];
-    block.items.push({ concept: 'Nuevo concepto', amount: 0 });
+    block.items.push({ label: 'Nuevo concepto', amount: 0 });
+    return out;
+  }
+
+  function addStep(quote, index) {
+    const out = clone(quote);
+    const block = (out.blocks || [])[index];
+    if (!block) return out;
+    block.process = block.process || [];
+    block.process.push({ title: 'Nuevo paso', detail: '' });
+    return out;
+  }
+
+  function removeStep(quote, index, stepIndex) {
+    const out = clone(quote);
+    const block = (out.blocks || [])[index];
+    if (!block || !block.process || !block.process.length) return out;
+    block.process.splice(stepIndex, 1);
     return out;
   }
 
@@ -156,6 +173,8 @@
     moveBlock,
     addItem,
     removeItem,
+    addStep,
+    removeStep,
     addPayment,
     removePayment,
     addCondition,
