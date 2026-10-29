@@ -196,6 +196,12 @@
       return currentUserId();
     },
 
+    async accessToken() {
+      const { data, error } = await ready().auth.getSession();
+      if (error || !data || !data.session) fail(error, 'No hay una sesión activa.');
+      return data.session.access_token;
+    },
+
     async addMedia(media) {
       const owner = await currentUserId();
       return one(

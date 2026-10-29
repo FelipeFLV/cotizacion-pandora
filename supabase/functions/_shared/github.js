@@ -72,6 +72,22 @@ export function createGithub(options) {
       .map((node) => node.path);
   }
 
+  function decodeBase64(value) {
+    const binary = atob(String(value || '').replace(/\s+/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function readFile(path) {
+    const response = await raw('GET', `/contents/${path}?ref=${encodeURIComponent(branch)}`);
+    if (response.status === 404) return '';
+    if (!response.ok) throw new Error(`GitHub respondió ${response.status}.`);
+    const body = await response.json();
+    if (!body || body.encoding !== 'base64' || !body.content) return '';
+    return decodeBase64(body.content);
+  }
+
   async function commit({ message, files, deletions }) {
     const base = await head();
     const baseTree = await treeOf(base);
@@ -102,5 +118,5 @@ export function createGithub(options) {
     };
   }
 
-  return { listPaths, commit };
+  return { listPaths, readFile, commit };
 }

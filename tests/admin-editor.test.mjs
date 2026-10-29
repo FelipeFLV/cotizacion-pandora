@@ -123,5 +123,6 @@ test('autosave waits before saving', () => {
   assert.match(editor, /const DELAY = \d+/);
   assert.match(editor, /setTimeout\(flush, DELAY\)/);
   assert.match(editor, /clearTimeout\(timer\)/);
-  assert.match(editor, /PADMIN\.editor = \{ mount, refresh, flush/);
+  assert.match(editor, /PADMIN\.editor = \{[\s\S]*?mount,/);
+  assert.match(editor, /repaint: repaintPublish/);
 });

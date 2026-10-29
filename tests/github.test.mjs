@@ -140,3 +140,24 @@ test('a 5xx is retried once, a 4xx is not', async () => {
   await assert.rejects(client.commit({ message: 'x', files: [], deletions: [] }), /422/);
   assert.equal(calls.filter((call) => call === 'GET /git/commits/base').length, 1);
 });
+
+test('readFile decodes a published page and treats a missing one as empty', async () => {
+  const page = '<meta name="pandora-quote-id" content="q1"> · Ñandú';
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname.replace('/repos/o/r', '');
+    if (path === '/contents/docs/c/x/index.html') {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { encoding: 'base64', content: Buffer.from(page, 'utf8').toString('base64') };
+        }
+      };
+    }
+    return { ok: false, status: 404, async json() { return { message: 'Not Found' }; } };
+  };
+
+  const gh = createGithub({ token: 't', repo: 'o/r', branch: 'main', fetchImpl });
+  assert.equal(await gh.readFile('docs/c/x/index.html'), page);
+  assert.equal(await gh.readFile('docs/c/y/index.html'), '');
+});

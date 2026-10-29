@@ -103,7 +103,7 @@
         <span class="quote-line">${esc(services.join(' · '))}${services.length && date ? ' · ' : ''}${esc(date)}</span>
       </button>
       <span class="pill pill-${kind}">${LABELS[kind]}</span>
-      ${url ? `<a class="quote-link" href="${esc(url)}" target="_blank" rel="noopener">Ver publicada</a>` : ''}
+      ${url && kind === 'published' ? `<a class="quote-link" href="${esc(url)}" target="_blank" rel="noopener">Ver publicada</a>` : ''}
       <div class="quote-actions">${actionsFor(kind, row)}</div>
     </article>`;
   }

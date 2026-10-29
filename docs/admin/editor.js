@@ -151,7 +151,10 @@
   }
 
   function publishSection() {
-    return section('publicacion', 'Publicación', `<div class="publish-box" id="publish-box"></div>`);
+    const body = PADMIN.publish
+      ? PADMIN.publish.render({ quote: current })
+      : `<div class="publish-box" id="publish-box"></div>`;
+    return section('publicacion', 'Publicación', body);
   }
 
   function body() {
@@ -179,6 +182,13 @@
   function refresh(quote) {
     current = quote;
     render();
+  }
+
+  function repaintPublish() {
+    if (!host) return;
+    const sectionNode = host.querySelector('#sec-publicacion');
+    if (!sectionNode) return render();
+    sectionNode.outerHTML = publishSection();
   }
 
   function updateComputed() {
@@ -332,6 +342,10 @@
 
   async function onOp(op, node) {
     if (/^ev-/.test(op)) return onEvidence(op, node);
+    if (/^(pub|hist)-/.test(op)) {
+      if (PADMIN.publish) await PADMIN.publish.op(op, node);
+      return;
+    }
     const index = Number(node.dataset.index);
     let next = current;
     if (op === 'block-add') next = M.addBlock(current);
@@ -353,12 +367,15 @@
   }
 
   function mount(node, options) {
+    root.clearTimeout(timer);
+    timer = null;
     host = node;
     current = options.quote;
     onChange = options.onChange;
     save = options.save;
     bank = options.bank || [];
     signedMap = options.signedMap || {};
+    if (PADMIN.publish) PADMIN.publish.setRow(options.row || null);
     savedAt = '';
     lastError = '';
     render();
@@ -380,5 +397,14 @@
     });
   }
 
-  PADMIN.editor = { mount, refresh, flush, status };
+  PADMIN.editor = {
+    mount,
+    refresh,
+    flush,
+    status,
+    repaint: repaintPublish,
+    currentQuote() {
+      return current;
+    }
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

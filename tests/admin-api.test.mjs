@@ -11,7 +11,7 @@ const NAMES = [
   'init', 'listQuotes', 'getQuote', 'createQuote', 'saveQuote', 'archiveQuote', 'unarchiveQuote',
   'setTemplate', 'duplicateQuote', 'newClientFrom', 'listVersions', 'createVersion',
   'restoreVersion', 'getMedia', 'signedUrl', 'uploadMedia', 'listBankItems', 'addBankItem',
-  'removeBankItem', 'listJobs'
+  'removeBankItem', 'listJobs', 'accessToken'
 ];
 
 function load() {

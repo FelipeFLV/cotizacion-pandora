@@ -160,6 +160,7 @@
     box.innerHTML = `${headerHtml(row)}<div class="editor-body" id="editor-body"></div>`;
     PADMIN.editor.mount($('editor-body'), {
       quote,
+      row: state.quotes.find((item) => item.id === id) || row,
       bank,
       signedMap,
       onChange(next) {
@@ -172,7 +173,7 @@
     });
   }
 
-  function renderEditor() {
+  async function renderEditor() {
     const row = active();
     if (!row) {
       state.editing = null;
@@ -187,7 +188,7 @@
       paintHeader(row);
       return;
     }
-    mountEditor(row);
+    await mountEditor(row);
   }
 
   async function load() {
@@ -199,25 +200,35 @@
       state.activeId = state.quotes.some((row) => row.id === remembered) ? remembered : '';
     }
     renderList();
-    renderEditor();
+    await renderEditor();
   }
 
   async function selectQuote(id) {
+    const mounted = state.editing && state.editing.id === id && !state.editing.loading;
+    if (mounted && state.activeId === id) return;
     if (state.activeId && state.activeId !== id) await PADMIN.editor.flush();
     state.activeId = id;
     state.editing = null;
     root.localStorage.setItem(STORE_KEY, id);
     renderList();
-    renderEditor();
+    await renderEditor();
   }
 
   async function act(action, id) {
     const row = state.quotes.find((item) => item.id === id);
     if (action === 'open') return selectQuote(id);
-    if (action === 'publish' || action === 'history') {
-      return toast('Esta acción se conecta en la siguiente etapa.');
-    }
     if (!row) return;
+    if (action === 'publish' || action === 'history') {
+      await selectQuote(id);
+      if (action === 'history') {
+        await PADMIN.publish.op('pub-history');
+        return;
+      }
+      await PADMIN.publish.op('pub-publish');
+      const box = $('sec-publicacion');
+      if (box) box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
     if (state.activeId === id && state.editing) await PADMIN.editor.flush();
 
     if (action === 'duplicate') {
@@ -372,6 +383,22 @@
   })();
 
   PADMIN.preview = preview;
+
+  PADMIN.publish.configure({
+    async onPublished() {
+      await load();
+    },
+    async onRetired() {
+      await load();
+    },
+    async onRestored() {
+      state.editing = null;
+      await load();
+    },
+    async onPdf() {
+      await openPreview(true);
+    }
+  });
 
   root.addEventListener('message', (event) => {
     if (event.origin !== root.location.origin) return;
