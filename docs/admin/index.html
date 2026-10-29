@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; img-src 'self' data: https://zvusvaotqtchaglwyifl.supabase.co; media-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; img-src 'self' data: https://zvusvaotqtchaglwyifl.supabase.co; media-src 'self' https://zvusvaotqtchaglwyifl.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>Panel de cotizaciones · Pandora</title>
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
@@ -52,6 +52,17 @@
 
 <p class="admin-toast" id="toast" role="status" hidden></p>
 
+<div class="preview-layer" id="preview-layer" hidden>
+  <header class="preview-bar">
+    <span class="preview-title" id="preview-title">Vista previa</span>
+    <div class="preview-actions">
+      <button class="mini" id="preview-print" type="button">Imprimir / PDF</button>
+      <button class="mini" id="preview-close" type="button">Cerrar</button>
+    </div>
+  </header>
+  <iframe id="preview-frame" title="Vista previa de la cotización" src="about:blank"></iframe>
+</div>
+
 <script src="vendor/supabase.js"></script>
 <script src="../app/core.js"></script>
 <script src="config.js"></script>
@@ -62,6 +73,7 @@
 <script src="editor-model.js"></script>
 <script src="form.js"></script>
 <script src="editor.js"></script>
+<script src="model-media.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

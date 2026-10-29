@@ -92,6 +92,10 @@
       <p class="editor-sub">${PADMIN.library.esc([meta.quoteNo, date].filter(Boolean).join(' · '))}
         <span class="pill pill-${kind}">${PADMIN.library.LABELS[kind]}</span></p>
       ${url ? `<p class="editor-url"><a href="${PADMIN.library.esc(url)}" target="_blank" rel="noopener">${PADMIN.library.esc(url)}</a></p>` : ''}
+      <div class="editor-tools">
+        <button class="mini" data-panel="preview" type="button">Vista previa</button>
+        <button class="mini" data-panel="pdf" type="button">PDF A4</button>
+      </div>
     </div>`;
   }
 
@@ -267,6 +271,121 @@
     showLogin();
   }
 
+  const preview = (function () {
+    let pending = null;
+    let ready = false;
+    let wantPrint = false;
+
+    function name(quote) {
+      return (quote && quote.meta && quote.meta.client) || 'Cotización';
+    }
+
+    function close() {
+      $('preview-layer').hidden = true;
+      doc.body.classList.remove('preview-open');
+      wantPrint = false;
+    }
+
+    function send(data) {
+      const frame = $('preview-frame');
+      if (!frame || !frame.contentWindow) return;
+      frame.contentWindow.postMessage({
+        type: 'pandora-preview',
+        quote: data.quote,
+        general: data.general,
+        meta: data.meta || {}
+      }, root.location.origin);
+      ready = true;
+      if (wantPrint) {
+        wantPrint = false;
+        root.setTimeout(() => frame.contentWindow.print(), 600);
+      }
+    }
+
+    function open(input) {
+      const data = input || {};
+      if (!data.quote) return;
+      const resolved = data.signedMap
+        ? PADMIN.modelMedia.resolve(data.quote, data.general, data.signedMap)
+        : { quote: data.quote, general: data.general };
+      ready = false;
+      $('preview-title').textContent = `Vista previa · ${name(data.quote)}`;
+      $('preview-layer').hidden = false;
+      doc.body.classList.add('preview-open');
+      pending = () => send({ quote: resolved.quote, general: resolved.general, meta: data.meta });
+      $('preview-frame').src = `preview.html?t=${Date.now()}`;
+      $('preview-close').focus();
+    }
+
+    function print() {
+      const frame = $('preview-frame');
+      if ($('preview-layer').hidden) return;
+      if (ready && frame && frame.contentWindow) {
+        frame.contentWindow.print();
+        return;
+      }
+      wantPrint = true;
+    }
+
+    return { open, close, print, onReady() {
+      if (!pending) return;
+      const job = pending;
+      pending = null;
+      job();
+    }, get ready() { return ready; } };
+  })();
+
+  PADMIN.preview = preview;
+
+  root.addEventListener('message', (event) => {
+    if (event.origin !== root.location.origin) return;
+    if (event.data && event.data.type === 'pandora-preview-ready') preview.onReady();
+  });
+
+  async function generalEvidence(quote) {
+    const ids = (quote.evidence && quote.evidence.generalIds) || { videos: [], images: [] };
+    const videos = ids.videos || [];
+    const images = ids.images || [];
+    if (!videos.length && !images.length) return { videos: [], images: [] };
+    const bank = await PADMIN.api.listBankItems();
+    const byId = new Map(bank.map((item) => [item.id, item]));
+    const piece = (item) => ({
+      title: item.title,
+      src: item.media_id ? `media:${item.media_id}` : item.url,
+      poster: ''
+    });
+    return {
+      videos: videos.map((id) => byId.get(id)).filter(Boolean).map(piece),
+      images: images.map((id) => byId.get(id)).filter(Boolean).map(piece)
+    };
+  }
+
+  async function buildPreview() {
+    const row = active();
+    if (!row) return null;
+    await PADMIN.editor.flush();
+    const quote = state.editing ? state.editing.quote : PADMIN.model.rowToQuote(row);
+    const general = await generalEvidence(quote);
+    const ids = PADMIN.modelMedia.refs(quote, general);
+    let signedMap = {};
+    if (ids.length) {
+      const rows = await PADMIN.api.getMedia(ids);
+      signedMap = {};
+      for (const media of rows) {
+        signedMap[media.id] = await PADMIN.api.signedUrl(media.storage_path);
+      }
+    }
+    const resolved = PADMIN.modelMedia.resolve(quote, general, signedMap);
+    return { quote: resolved.quote, general: resolved.general, meta: { generatedAt: new Date().toISOString() } };
+  }
+
+  async function openPreview(shouldPrint) {
+    const data = await buildPreview();
+    if (!data) return;
+    preview.open(data);
+    if (shouldPrint) preview.print();
+  }
+
   async function submitLogin(event) {
     event.preventDefault();
     const email = $('email').value.trim();
@@ -316,8 +435,23 @@
         renderList();
         return;
       }
+      const panelAction = event.target.closest('[data-panel]');
+      if (panelAction) {
+        try {
+          await openPreview(panelAction.dataset.panel === 'pdf');
+        } catch (error) {
+          toast(error.message, 'error');
+        }
+        return;
+      }
+      if (event.target.closest('#preview-close')) return preview.close();
+      if (event.target.closest('#preview-print')) return preview.print();
       if (event.target.closest('#signout')) return PADMIN.auth.signOut();
       if (event.target.closest('#import-open')) return $('import-file').click();
+    });
+
+    doc.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !$('preview-layer').hidden) preview.close();
     });
 
     doc.addEventListener('change', (event) => {

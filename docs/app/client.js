@@ -1,28 +1,38 @@
-/* Interacciones de la versión cliente: sin edición, sin almacenamiento, sin red. */
+/* Interacciones de la versión cliente: sin edición, sin almacenamiento, sin red.
+   Se usa igual en las páginas publicadas (con `__PANDORA__` embebido) y en la
+   vista previa del panel (que llama `P.client.init` al recibir los datos). */
 (function () {
   'use strict';
 
-  const data = window.__PANDORA__ || {};
-  const quote = data.quote;
-  if (!quote) return;
-
-  const general = data.general || { videos: [], images: [] };
-  const mode = (quote.evidence && quote.evidence.mode) || 'service';
+  const state = {
+    quote: null,
+    general: { videos: [], images: [] },
+    meta: {}
+  };
+  let bound = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
 
-  P.render.all(quote, {
-    readonly: true,
-    view: 'client',
-    evidenceMode: mode,
-    general
-  });
+  function mode() {
+    return (state.quote && state.quote.evidence && state.quote.evidence.mode) || 'service';
+  }
 
-  const generated = data.meta && data.meta.generatedAt;
-  const label = $('[data-generated-label]');
-  if (label && generated) {
-    label.textContent = `Generada el ${P.dateLabel(quote.meta.date)} a las ${P.timeLabel(generated)}`;
+  function render() {
+    P.render.all(state.quote, {
+      readonly: true,
+      view: 'client',
+      evidenceMode: mode(),
+      general: state.general
+    });
+
+    const generated = state.meta && state.meta.generatedAt;
+    const label = $('[data-generated-label]');
+    if (label) {
+      label.textContent = generated
+        ? `Generada el ${P.dateLabel(state.quote.meta.date)} a las ${P.timeLabel(generated)}`
+        : '';
+    }
   }
 
   function pauseAll() {
@@ -30,8 +40,8 @@
   }
 
   function piece(blockIndex, kind, index) {
-    if (blockIndex === 'general') return (general[kind] || [])[index];
-    const block = quote.blocks[blockIndex];
+    if (blockIndex === 'general') return (state.general[kind] || [])[index];
+    const block = state.quote.blocks[blockIndex];
     return block ? block[kind][index] : null;
   }
 
@@ -88,55 +98,73 @@
     }
   };
 
-  document.addEventListener('click', (event) => {
-    const trigger = event.target.closest('[data-action]');
-    if (!trigger) return;
-    const fn = actions[trigger.dataset.action];
-    if (!fn) return;
-    event.preventDefault();
-    fn.call(trigger, event);
-  });
+  function bind() {
+    if (bound) return;
+    bound = true;
 
-  const lightbox = $('#lightbox');
-  if (lightbox) {
-    lightbox.addEventListener('click', (event) => {
-      if (event.target.id === 'lightbox') closeLightbox();
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('[data-action]');
+      if (!trigger) return;
+      const fn = actions[trigger.dataset.action];
+      if (!fn) return;
+      event.preventDefault();
+      fn.call(trigger, event);
     });
-  }
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && lightbox && !lightbox.hidden) closeLightbox();
-  });
-
-  document.addEventListener('play', (event) => {
-    if (event.target.tagName !== 'VIDEO') return;
-    $$('video').forEach((video) => {
-      if (video !== event.target) video.pause();
-    });
-  }, true);
-
-  const links = $$('[data-nav]');
-  if ('IntersectionObserver' in window) {
-    const map = new Map();
-    links.forEach((link) => {
-      const target = document.querySelector(link.getAttribute('href'));
-      if (target) map.set(target, link);
-    });
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        links.forEach((link) => link.removeAttribute('aria-current'));
-        const link = map.get(entry.target);
-        if (link) link.setAttribute('aria-current', 'true');
+    const lightbox = $('#lightbox');
+    if (lightbox) {
+      lightbox.addEventListener('click', (event) => {
+        if (event.target.id === 'lightbox') closeLightbox();
       });
-    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
-    map.forEach((_, section) => observer.observe(section));
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && lightbox && !lightbox.hidden) closeLightbox();
+    });
+
+    document.addEventListener('play', (event) => {
+      if (event.target.tagName !== 'VIDEO') return;
+      $$('video').forEach((video) => {
+        if (video !== event.target) video.pause();
+      });
+    }, true);
+
+    const links = $$('[data-nav]');
+    if ('IntersectionObserver' in window) {
+      const map = new Map();
+      links.forEach((link) => {
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) map.set(target, link);
+      });
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          links.forEach((link) => link.removeAttribute('aria-current'));
+          const link = map.get(entry.target);
+          if (link) link.setAttribute('aria-current', 'true');
+        });
+      }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+      map.forEach((_, section) => observer.observe(section));
+    }
+
+    $$('[data-nav]').forEach((link) => {
+      const target = document.querySelector(link.getAttribute('href'));
+      if (!target) link.hidden = true;
+    });
   }
 
-  $$('[data-nav]').forEach((link) => {
-    const target = document.querySelector(link.getAttribute('href'));
-    if (!target) link.hidden = true;
-  });
+  function init(data) {
+    const payload = data || {};
+    if (!payload.quote) return;
+    state.quote = payload.quote;
+    state.general = payload.general || { videos: [], images: [] };
+    state.meta = payload.meta || {};
+    bind();
+    render();
+    document.body.classList.add('ready');
+  }
 
-  document.body.classList.add('ready');
+  P.client = { init, render, state };
+
+  if (window.__PANDORA__ && window.__PANDORA__.quote) init(window.__PANDORA__);
 })();
