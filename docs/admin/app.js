@@ -51,7 +51,8 @@
     }
 
     try {
-      PADMIN.auth.init(root.PANDORA_ADMIN_CONFIG);
+      const client = PADMIN.auth.init(root.PANDORA_ADMIN_CONFIG);
+      PADMIN.api.init(client);
     } catch (error) {
       els.form.hidden = true;
       setStatus(error.message, 'error');
