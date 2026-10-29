@@ -29,12 +29,21 @@ Y abre <http://localhost:4173>.
 
 1. Pulsa **Editar** y haz clic en cualquier texto para cambiarlo.
 2. **Cotizaciones** (arriba) abre la biblioteca guardada en este navegador:
+   - **Usar como borrador** marca una cotización sin publicar como plantilla base.
+   - **Nuevo cliente** (en el borrador) crea una copia limpia con identidad y URL nuevas.
    - **Nueva** crea una cotización desde un servicio.
-   - **Duplicar** copia una existente.
-   - **Eliminar** borra la seleccionada (siempre queda al menos una).
+   - **Duplicar** copia una existente y le añade “(copia)”.
+   - **Eliminar** borra la seleccionada (siempre queda al menos una; el borrador no se elimina).
    - **Respaldar** descarga un JSON con toda la biblioteca.
    - **Importar respaldo** reemplaza la biblioteca actual.
 3. El pie “Guardado en este navegador” confirma cada guardado.
+
+### Flujo con borrador
+
+1. Prepara tu cotización base (servicios, precios, condiciones) y pulsa **Usar como borrador**. Ese borrador nunca se publica.
+2. Para cada cliente, abre **Cotizaciones → Nuevo cliente** en el borrador. Nace como “Cliente sin nombre”, sin URL y con la fecha del día.
+3. Ajusta nombre, número, precio y condiciones; exporta y publica. Cada cliente recibe su propia URL.
+4. Si el cliente pide un ajuste de precio, edita **esa misma cotización** y vuelve a exportar: la URL no cambia y queda una versión en el historial.
 
 La biblioteca vive en `localStorage` (clave `pandora.biblioteca.v1`). No se sube al repo ni a ningún servidor. Si limpias los datos del navegador se pierde: restaura tu respaldo JSON.
 

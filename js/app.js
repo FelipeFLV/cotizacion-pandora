@@ -518,10 +518,19 @@
     const lib = store.lib;
     $('#libraryList').innerHTML = lib.quotes.map((entry) => {
       const q = entry.quote;
-      const url = q.meta.publishedUrl || '';
-      const pending = !q.meta.retiredAt && q.meta.retireRequestedAt;
-      const state = q.meta.retiredAt ? 'retirada' : (pending ? 'pendiente' : (url ? 'publicada' : 'sin publicar'));
-      const stateLabel = state === 'retirada' ? 'Retirada' : (state === 'pendiente' ? 'Retiro pendiente' : (state === 'publicada' ? 'Publicada' : 'Sin publicar'));
+      const draft = q.meta.isDraft === true;
+      const url = draft ? '' : (q.meta.publishedUrl || '');
+      const pending = !draft && !q.meta.retiredAt && q.meta.retireRequestedAt;
+      const state = draft ? 'borrador' : (q.meta.retiredAt ? 'retirada' : (pending ? 'pendiente' : (url ? 'publicada' : 'sin publicar')));
+      const stateLabel = draft ? 'Borrador' : (state === 'retirada' ? 'Retirada' : (state === 'pendiente' ? 'Retiro pendiente' : (state === 'publicada' ? 'Publicada' : 'Sin publicar')));
+      const actions = draft
+        ? `<button class="mini" data-action="new-client" data-id="${esc(entry.id)}">Nuevo cliente</button>`
+        : `${entry.versions.length ? `<button class="mini" data-action="open-history" data-id="${esc(entry.id)}">Historial (${entry.versions.length})</button>` : ''}
+          ${pending ? `<button class="mini" data-action="cancel-retire" data-id="${esc(entry.id)}">Cancelar retiro</button>` : ''}
+          ${url && !q.meta.retiredAt && !pending ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
+          <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
+          ${!url && !q.meta.retiredAt && !pending ? `<button class="mini" data-action="set-draft" data-id="${esc(entry.id)}">Usar como borrador</button>` : ''}
+          <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>`;
       return `<div class="library-row${entry.id === lib.activeId ? ' is-active' : ''}" data-id="${esc(entry.id)}">
         <button class="library-main" data-action="open-quote" data-id="${esc(entry.id)}"${entry.id === lib.activeId ? ' aria-current="true"' : ''}>
           <span class="library-name">${esc(entry.name)}</span>
@@ -529,13 +538,7 @@
           ${url ? `<span class="library-url">${esc(url)}</span>` : ''}
         </button>
         <span class="status-pill status-${state}">${stateLabel}</span>
-        <div class="library-actions">
-          ${entry.versions.length ? `<button class="mini" data-action="open-history" data-id="${esc(entry.id)}">Historial (${entry.versions.length})</button>` : ''}
-          ${pending ? `<button class="mini" data-action="cancel-retire" data-id="${esc(entry.id)}">Cancelar retiro</button>` : ''}
-          ${url && !q.meta.retiredAt && !pending ? `<button class="mini" data-action="retire-quote" data-id="${esc(entry.id)}">Retirar</button>` : ''}
-          <button class="mini" data-action="duplicate-quote" data-id="${esc(entry.id)}">Duplicar</button>
-          <button class="mini danger" data-action="delete-quote" data-id="${esc(entry.id)}">Eliminar</button>
-        </div>
+        <div class="library-actions">${actions}</div>
       </div>`;
     }).join('');
     updateLibraryCount();
@@ -698,8 +701,12 @@
   }
 
   function openPublish() {
+    if (quote.meta.isDraft) {
+      toast('El borrador es tu plantilla. Usa «Nuevo cliente» para crear una cotización publicable.');
+      return;
+    }
     const client = (quote.meta.client || '').trim();
-    if (!client) {
+    if (!client || client === 'Cliente sin nombre') {
       toast('Ponle nombre al cliente antes de exportar.');
       if (!editMode) {
         editMode = true;
@@ -720,6 +727,10 @@
   }
 
   function downloadPackage() {
+    if (quote.meta.isDraft) {
+      toast('El borrador no se publica. Crea un cliente desde él.');
+      return;
+    }
     const payload = buildPayload({ applyFallback: true });
     const errors = P.validateMedia(payload);
     if (errors.length) {
@@ -937,6 +948,32 @@
       refresh();
       renderLibrary();
       toast('Cotización duplicada.');
+    },
+    'new-client'() {
+      const entry = P.library.newClientFrom(store.lib, this.dataset.id);
+      if (!entry) return;
+      quote = entry.quote;
+      store.quote = quote;
+      saveNow();
+      refresh();
+      renderLibrary();
+      $('#libraryDialog').close();
+      if (!editMode) {
+        editMode = true;
+        applyEditMode();
+      }
+      focusPath('meta.client');
+      toast('Cliente creado desde el borrador. Ponle nombre y exporta.');
+    },
+    'set-draft'() {
+      const entry = P.library.setDraft(store.lib, this.dataset.id);
+      if (!entry) {
+        toast('Solo una cotización sin publicar puede ser el borrador.');
+        return;
+      }
+      saveNow();
+      renderLibrary();
+      toast('Borrador actualizado. «Nuevo cliente» parte de esta cotización.');
     },
     'delete-quote'() {
       const id = this.dataset.id;

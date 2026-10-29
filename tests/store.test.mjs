@@ -65,6 +65,48 @@ test('add, duplicate and remove', () => {
   assert.equal(P.library.remove(lib, lib.quotes[0].id), false);
 });
 
+test('a new client from the draft gets its own identity', () => {
+  const storage = fakeStorage();
+  const lib = P.library.load(storage);
+  const draftId = lib.quotes[0].id;
+
+  assert.equal(P.library.setDraft(lib, draftId).id, draftId);
+  assert.equal(lib.quotes[0].quote.meta.isDraft, true);
+
+  const entry = P.library.newClientFrom(lib, draftId);
+  assert.notEqual(entry.id, draftId);
+  assert.equal(entry.quote.meta.client, 'Cliente sin nombre');
+  assert.equal(entry.quote.meta.quoteNo, '');
+  assert.equal(entry.quote.meta.slug, '');
+  assert.equal(entry.quote.meta.publishedUrl, '');
+  assert.equal(entry.quote.meta.isDraft, false);
+  assert.equal(entry.quote.blocks.length, 1);
+  assert.equal(lib.quotes[0].quote.meta.isDraft, true, 'el borrador sigue intacto');
+  assert.equal(lib.activeId, entry.id);
+  assert.equal(P.library.remove(lib, draftId), false, 'el borrador no se elimina');
+});
+
+test('only an unpublished quote can be the draft', () => {
+  const storage = fakeStorage();
+  const lib = P.library.load(storage);
+  lib.quotes[0].quote.meta.publishedUrl = 'https://example.test/c/cliente/';
+
+  assert.equal(P.library.setDraft(lib, lib.quotes[0].id), null);
+  assert.notEqual(lib.quotes[0].quote.meta.isDraft, true);
+});
+
+test('normalize keeps a single draft', () => {
+  const storage = fakeStorage();
+  const lib = P.library.load(storage);
+  const second = P.library.add(lib, P.newQuote('branding'));
+  lib.quotes[0].quote.meta.isDraft = true;
+  second.quote.meta.isDraft = true;
+
+  P.library.normalize(lib);
+  assert.equal(lib.quotes.filter((entry) => entry.quote.meta.isDraft).length, 1);
+  assert.equal(lib.quotes[0].quote.meta.isDraft, true);
+});
+
 test('snapshots cap at ten and restore', () => {
   const storage = fakeStorage();
   const lib = P.library.load(storage);

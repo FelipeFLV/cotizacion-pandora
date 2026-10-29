@@ -81,6 +81,7 @@
       entry.quote.id = entry.id;
       entry.quote.meta = entry.quote.meta || {};
       entry.quote.meta.retireRequestedAt = entry.quote.meta.retireRequestedAt || '';
+      entry.quote.meta.isDraft = entry.quote.meta.isDraft === true;
       entry.quote.evidence = entry.quote.evidence && entry.quote.evidence.mode
         ? entry.quote.evidence
         : { mode: 'service', generalIds: { videos: [], images: [] } };
@@ -88,6 +89,12 @@
       entry.updatedAt = entry.updatedAt || now();
       entry.versions = Array.isArray(entry.versions) ? entry.versions : [];
       return entry;
+    });
+    let draftSeen = false;
+    lib.quotes.forEach((entry) => {
+      if (!entry.quote.meta.isDraft) return;
+      if (draftSeen) entry.quote.meta.isDraft = false;
+      else draftSeen = true;
     });
     if (!lib.quotes.some((entry) => entry.id === lib.activeId)) {
       lib.activeId = lib.quotes.length ? lib.quotes[0].id : null;
@@ -190,9 +197,43 @@
       quote.meta.publishedAt = '';
       quote.meta.retiredAt = '';
       quote.meta.retireRequestedAt = '';
+      quote.meta.isDraft = false;
       entry.versions = [];
       lib.quotes.push(entry);
       lib.activeId = entry.id;
+      return entry;
+    },
+
+    newClientFrom(lib, id) {
+      const source = lib.quotes.find((entry) => entry.id === id);
+      if (!source) return null;
+      const quote = P.clone(source.quote);
+      quote.meta = quote.meta || {};
+      quote.meta.client = 'Cliente sin nombre';
+      quote.meta.quoteNo = '';
+      quote.meta.date = P.todayISO();
+      quote.meta.slug = '';
+      quote.meta.generatedAt = '';
+      quote.meta.publishedUrl = '';
+      quote.meta.publishedAt = '';
+      quote.meta.retiredAt = '';
+      quote.meta.retireRequestedAt = '';
+      quote.meta.isDraft = false;
+      const entry = makeEntry(quote);
+      entry.versions = [];
+      lib.quotes.push(entry);
+      lib.activeId = entry.id;
+      return entry;
+    },
+
+    setDraft(lib, id) {
+      const entry = lib.quotes.find((item) => item.id === id);
+      if (!entry) return null;
+      if (entry.quote.meta.publishedUrl || entry.quote.meta.retiredAt || entry.quote.meta.retireRequestedAt) return null;
+      lib.quotes.forEach((item) => {
+        item.quote.meta = item.quote.meta || {};
+        item.quote.meta.isDraft = item.id === id;
+      });
       return entry;
     },
 
@@ -200,6 +241,7 @@
       if (lib.quotes.length <= 1) return false;
       const index = lib.quotes.findIndex((entry) => entry.id === id);
       if (index === -1) return false;
+      if (lib.quotes[index].quote.meta && lib.quotes[index].quote.meta.isDraft) return false;
       lib.quotes.splice(index, 1);
       if (lib.activeId === id) lib.activeId = lib.quotes[0].id;
       return true;

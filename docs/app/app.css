@@ -1276,6 +1276,7 @@ body.is-editing .pct-input { background: rgba(70, 0, 187, .08); padding: 2px 4px
   color: var(--ink-3);
 }
 .status-pill.status-publicada { border-color: var(--mint); color: #2E6B45; background: rgba(191, 224, 200, .22); }
+.status-pill.status-borrador { border-color: var(--purple); color: var(--purple); background: rgba(70, 0, 187, .07); }
 .status-pill.status-retirada { border-color: var(--line); color: var(--ink-3); text-decoration: line-through; }
 .status-pill.status-pendiente { border-color: #D9B679; color: #8A5A12; background: rgba(217, 182, 121, .14); }
 

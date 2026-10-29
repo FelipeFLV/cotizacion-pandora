@@ -182,6 +182,57 @@ try {
   await libContext.close();
   console.log('E2E biblioteca: OK');
 
+  /* ---------- borrador y nuevos clientes ---------- */
+  const draftContext = await browser.newContext();
+  const draft = await draftContext.newPage();
+  const draftErrors = watch(draft);
+  draft.on('dialog', (dialog) => dialog.accept());
+
+  await draft.goto(matrixUrl);
+  await draft.waitForSelector('body.ready', { timeout: 10000 });
+  await draft.locator('[data-action="open-library"]').click();
+  await draft.waitForSelector('#libraryDialog[open]');
+
+  await draft.locator('[data-action="set-draft"]').first().click();
+  const draftRow = draft.locator('.library-row').filter({ has: draft.locator('.status-borrador') });
+  assert.equal(await draftRow.count(), 1, 'se marca un borrador');
+  assert.equal(await draftRow.locator('[data-action="delete-quote"]').count(), 0, 'el borrador no se elimina');
+  assert.equal(await draftRow.locator('[data-action="new-client"]').count(), 1, 'el borrador ofrece nuevo cliente');
+
+  await draft.locator('[data-action="new-client"]').click();
+  await draft.waitForFunction(() => !document.querySelector('#libraryDialog').open);
+  assert.equal((await draft.locator('[data-text="meta.client"]').first().innerText()).trim(), 'Cliente sin nombre');
+  assert.equal(await draft.locator('body.is-editing').count(), 1, 'el cliente nuevo se abre en edición');
+
+  await draft.locator('[data-text="meta.client"]').first().fill('Cliente Nuevo');
+  await draft.waitForTimeout(700);
+  await draft.locator('[data-action="open-publish"]').click();
+  await draft.waitForSelector('#publishDialog[open]');
+  const firstClientUrl = await draft.locator('[data-publish-url]').getAttribute('href');
+  await draft.locator('[data-action="close-publish"]').click();
+
+  await draft.locator('[data-text="meta.client"]').first().fill('Cliente Nuevo bis');
+  await draft.waitForTimeout(700);
+  await draft.locator('[data-action="open-publish"]').click();
+  await draft.waitForSelector('#publishDialog[open]');
+  assert.equal(
+    await draft.locator('[data-publish-url]').getAttribute('href'),
+    firstClientUrl,
+    'renombrar al cliente no cambia la URL'
+  );
+  await draft.locator('[data-action="close-publish"]').click();
+
+  await draft.locator('[data-action="open-library"]').click();
+  await draft.waitForSelector('#libraryDialog[open]');
+  await draft.locator('.library-row').filter({ has: draft.locator('.status-borrador') }).locator('.library-main').click();
+  await draft.locator('[data-action="open-publish"]').click();
+  await draft.waitForFunction(() => document.querySelector('#toast').textContent.includes('borrador'));
+  assert.equal(await draft.locator('#publishDialog[open]').count(), 0, 'el borrador no se puede publicar');
+
+  assert.deepEqual(draftErrors, [], `errores en el borrador:\n${draftErrors.join('\n')}`);
+  await draftContext.close();
+  console.log('E2E borrador: OK');
+
   /* ---------- evidencias ---------- */
   const evContext = await browser.newContext();
   const ev = await evContext.newPage();
