@@ -11,17 +11,11 @@
     activeId: '',
     filter: 'all',
     query: '',
-    user: null
+    user: null,
+    editing: null
   };
 
   const $ = (id) => doc.getElementById(id);
-
-  function el(tag, className, text) {
-    const node = doc.createElement(tag);
-    if (className) node.className = className;
-    if (text != null) node.textContent = text;
-    return node;
-  }
 
   let toastTimer = null;
   function toast(message, kind) {
@@ -87,45 +81,91 @@
     return state.quotes.find((row) => row.id === state.activeId) || null;
   }
 
-  function renderEditor() {
+  function headerHtml(row) {
+    const meta = (row.data && row.data.meta) || {};
+    const kind = PADMIN.library.state(row);
+    const url = PADMIN.library.urlOf(row);
+    const date = meta.date && root.P && root.P.dateLabel ? root.P.dateLabel(meta.date) : meta.date;
+    return `<div class="editor-head">
+      <p class="admin-kicker">${kind === 'template' ? 'Plantilla' : 'Cotización'}</p>
+      <h2 data-editor-client>${PADMIN.library.esc(meta.client || 'Cliente sin nombre')}</h2>
+      <p class="editor-sub">${PADMIN.library.esc([meta.quoteNo, date].filter(Boolean).join(' · '))}
+        <span class="pill pill-${kind}">${PADMIN.library.LABELS[kind]}</span></p>
+      ${url ? `<p class="editor-url"><a href="${PADMIN.library.esc(url)}" target="_blank" rel="noopener">${PADMIN.library.esc(url)}</a></p>` : ''}
+    </div>`;
+  }
+
+  function paintHeader(row) {
+    const head = $('editor').querySelector('.editor-head');
+    if (!head || !row) return;
+    head.outerHTML = headerHtml(row);
+  }
+
+  async function saveActive(quote) {
+    const id = state.activeId;
+    const row = await PADMIN.api.saveQuote(id, quote);
+    const entry = state.quotes.find((item) => item.id === id);
+    if (entry) {
+      entry.data = row.data || quote;
+      entry.status = row.status;
+      entry.slug = row.slug;
+    }
+    if (state.editing && state.editing.id === id) state.editing.quote = quote;
+    renderList();
+    paintHeader(entry || row);
+  }
+
+  function mountEditor(row) {
     const box = $('editor');
+    const quote = PADMIN.model.rowToQuote(row);
+    state.editing = { id: row.id, quote };
+    box.innerHTML = `${headerHtml(row)}<div class="editor-body" id="editor-body"></div>`;
+    PADMIN.editor.mount($('editor-body'), {
+      quote,
+      onChange(next) {
+        state.editing.quote = next;
+        const entry = state.quotes.find((item) => item.id === row.id);
+        if (entry) entry.data = next;
+        paintHeader(entry || row);
+      },
+      save: saveActive
+    });
+  }
+
+  function renderEditor() {
     const row = active();
     if (!row) {
-      box.innerHTML = `<div class="editor-empty">
+      state.editing = null;
+      $('editor').innerHTML = `<div class="editor-empty">
         <p class="admin-kicker">Sin selección</p>
         <h2>Elige una cotización</h2>
         <p class="admin-lead">Abre una de la izquierda o importa tu biblioteca para empezar.</p>
       </div>`;
       return;
     }
-    const meta = (row.data && row.data.meta) || {};
-    const kind = PADMIN.library.state(row);
-    const url = PADMIN.library.urlOf(row);
-    const services = PADMIN.library.servicesOf(row.data);
-    box.innerHTML = `<div class="editor-head">
-      <p class="admin-kicker">${kind === 'template' ? 'Plantilla' : 'Cotización'}</p>
-      <h2>${PADMIN.library.esc(meta.client || 'Cliente sin nombre')}</h2>
-      <p class="editor-sub">${PADMIN.library.esc([meta.quoteNo, PADMIN.library.esc(meta.date || '')].filter(Boolean).join(' · '))}</p>
-    </div>
-    <dl class="editor-facts">
-      <div><dt>Estado</dt><dd>${PADMIN.library.LABELS[kind]}</dd></div>
-      <div><dt>Servicios</dt><dd>${PADMIN.library.esc(services.join(', ') || '—')}</dd></div>
-      <div><dt>URL</dt><dd>${url ? `<a href="${PADMIN.library.esc(url)}" target="_blank" rel="noopener">${PADMIN.library.esc(url)}</a>` : 'Sin publicar'}</dd></div>
-    </dl>
-    <p class="editor-note">El editor de secciones llega en la siguiente etapa.</p>`;
+    if (state.editing && state.editing.id === row.id) {
+      paintHeader(row);
+      return;
+    }
+    mountEditor(row);
   }
 
   async function load() {
     state.quotes = await PADMIN.api.listQuotes();
     const remembered = root.localStorage.getItem(STORE_KEY) || '';
     const exists = state.quotes.some((row) => row.id === state.activeId);
-    if (!exists) state.activeId = state.quotes.some((row) => row.id === remembered) ? remembered : '';
+    if (!exists) {
+      state.editing = null;
+      state.activeId = state.quotes.some((row) => row.id === remembered) ? remembered : '';
+    }
     renderList();
     renderEditor();
   }
 
-  function selectQuote(id) {
+  async function selectQuote(id) {
+    if (state.activeId && state.activeId !== id) await PADMIN.editor.flush();
     state.activeId = id;
+    state.editing = null;
     root.localStorage.setItem(STORE_KEY, id);
     renderList();
     renderEditor();
@@ -138,6 +178,7 @@
       return toast('Esta acción se conecta en la siguiente etapa.');
     }
     if (!row) return;
+    if (state.activeId === id && state.editing) await PADMIN.editor.flush();
 
     if (action === 'duplicate') {
       const copy = await PADMIN.api.duplicateQuote(id);
