@@ -1,8 +1,9 @@
 # Cotizador Pandora
 
-Dos capas en un mismo repo:
+Tres capas en un mismo repo:
 
-- **Matriz privada** (`index.html`): se abre en tu Mac y sirve para preparar todas las cotizaciones (cliente 01, 02…), editar precios, condiciones, evidencias y datos de pago.
+- **Panel privado** (`docs/admin/`): la forma de trabajo actual. Se entra con enlace mágico desde cualquier computadora, guarda todo en Supabase y publica en GitHub Pages con un botón.
+- **Matriz privada** (`index.html`, heredada): se abre en tu Mac y sirve para preparar cotizaciones sin conexión. Su biblioteca vive en el navegador; se puede importar al panel con **Respaldar** / **Importar respaldo**.
 - **Versión cliente** (`docs/c/<slug>/`): página de solo lectura, publicada en GitHub Pages, sin edición ni guardado. Queda visible aunque la Mac esté apagada.
 
 La propuesta de H&S Inmobiliaria sigue disponible en la URL de siempre:
@@ -10,7 +11,31 @@ La propuesta de H&S Inmobiliaria sigue disponible en la URL de siempre:
 
 ---
 
-## 1. Abrir la matriz
+## 1. Panel privado
+
+Panel de escritorio (no está pensado para móvil): <https://felipeflv.github.io/cotizacion-pandora/admin/>.
+
+- **Acceso**: un único correo autorizado (`felipeflores1986@gmail.com`) entra con enlace mágico. Si el enlace abre otra pestaña, pégalo en la misma: la sesión queda guardada en ese navegador.
+- **Dónde vive el trabajo**: Supabase (Postgres + storage privado). Desde otra computadora se ve la misma biblioteca; sin sesión, la API y el bucket no devuelven nada.
+- **Borradores y medios**: hasta que publicas, el JSON y las imágenes viven en el bucket privado `drafts`. Solo lo aprobado se escribe en el repo público.
+- **Publicar**: abre la cotización → **Publicación → Publicar**. La función Edge hace un commit atómico en GitHub Pages y devuelve la URL. La primera publicación fija el slug; republicar **conserva la misma URL**.
+- **Retirar**: borra la página y sus imágenes del repo (la URL pasa a 404) y conserva la cotización, su slug y su historial en el panel.
+- **Historial**: queda una versión en cada publicación y en cada captura manual; se puede restaurar, y antes de restaurar se guarda «Antes de restaurar».
+- **Plantilla**: una cotización marcada como plantilla no se publica ni se archiva; **Nuevo cliente** crea una copia limpia con identidad y URL nuevas.
+- **Evidencias**: las imágenes se suben desde el panel (se comprimen en el navegador y se añaden al banco); los videos van como enlace de YouTube o Vimeo, nunca alojados aquí.
+- **PDF**: **PDF A4** abre el diálogo de impresión con la hoja de estilos de impresión; el resultado coincide con la página publicada.
+
+Requisitos de publicación:
+
+- El panel solo puede publicar desde `https://felipeflv.github.io`: las funciones Edge aceptan únicamente ese origen (`ALLOWED_ORIGIN`). Desde `localhost` se puede editar y previsualizar, pero no publicar.
+- Las funciones usan un token de GitHub guardado como secreto (`GITHUB_TOKEN`, con permiso `repo`); si se rota, hay que actualizarlo en **Edge Functions → Secrets**.
+- La migración de las páginas existentes está documentada en `specs/2026-10-28-migracion-registro.md`.
+
+Los apartados siguientes describen la matriz heredada y el ayudante `tools/publicar.mjs`, que siguen funcionando para trabajar sin conexión.
+
+---
+
+## 2. Abrir la matriz
 
 Doble clic en `index.html`. No necesita servidor ni build.
 
@@ -25,7 +50,7 @@ Y abre <http://localhost:4173>.
 
 ---
 
-## 2. Preparar una cotización
+## 3. Preparar una cotización
 
 1. Pulsa **Editar** y haz clic en cualquier texto para cambiarlo.
 2. **Cotizaciones** (arriba) abre la biblioteca guardada en este navegador:
@@ -51,7 +76,7 @@ El costo y el precio son el mismo número: el precio se arma con las líneas de 
 
 ---
 
-## 3. Evidencias
+## 4. Evidencias
 
 El botón **Evidencias** define qué verá el cliente:
 
@@ -74,7 +99,7 @@ El selector de archivo local solo sirve para previsualizar en esta sesión. Al e
 
 ---
 
-## 4. Publicar
+## 5. Publicar
 
 1. En la matriz, pulsa **Exportar cliente**.
 2. Revisa la URL y descarga el paquete `.json`.
@@ -96,7 +121,7 @@ Si el paquete trae un medio inexistente, un esquema inseguro o un slug que ya pe
 
 ---
 
-## 5. Retirar una publicación
+## 6. Retirar una publicación
 
 1. **Cotizaciones → Retirar** en la cotización publicada.
 2. Se descarga un paquete `pandora-retiro-…json`.
@@ -106,7 +131,7 @@ La URL deja de existir (404), pero la cotización y su historial siguen en la bi
 
 ---
 
-## 6. Historial
+## 7. Historial
 
 - **Local**: cada exportación guarda un snapshot con fecha y hora. **Historial → Restaurar** vuelve a una versión anterior. Se conservan las últimas 10.
 - **Git**: cada publicación es un commit; el historial completo queda en el repo.
@@ -115,7 +140,7 @@ Restaurar no cambia la URL publicada hasta que vuelvas a exportar.
 
 ---
 
-## 7. Privacidad y límites
+## 8. Privacidad y límites
 
 El repo es público y las páginas no tienen contraseña. La protección es:
 
@@ -128,7 +153,7 @@ La matriz nunca se publica: GitHub Pages sirve únicamente la carpeta `docs/`.
 
 ---
 
-## 8. Solución de problemas
+## 9. Solución de problemas
 
 | Problema | Qué hacer |
 | --- | --- |
@@ -141,26 +166,29 @@ La matriz nunca se publica: GitHub Pages sirve únicamente la carpeta `docs/`.
 
 ---
 
-## 9. Estructura del repo
+## 10. Estructura del repo
 
 | Ruta | Qué es | ¿Se publica? |
 | --- | --- | --- |
 | `index.html` | Matriz privada | No |
 | `js/` | Lógica de la matriz | No |
+| `docs/admin/` | Panel privado (solo UI; los datos viven en Supabase) | Sí |
+| `supabase/migrations/` | Esquema, RLS, storage y permisos del panel | No |
+| `supabase/functions/` | Edge Functions `publish` y `retire` + núcleos compartidos | No |
 | `docs/c/<slug>/` | Versiones cliente | Sí |
 | `docs/app/` | CSS y JS compartido | Sí |
 | `docs/assets/` | Logos, fuentes y medios (~6 MB) | Sí |
 | `docs/index.html` | Redirección de la URL antigua a H&S | Sí |
 | `docs/robots.txt`, `docs/.nojekyll` | Control de indexación y despliegue | Sí |
 | `tools/` | Generador, plantilla y `.command` | Sí (no se sirve como página) |
-| `specs/` | Diseño y plan de la migración | No (local) |
+| `specs/` | Diseño, plan y registro de migración | Solo el registro |
 | `tests/` | Pruebas unitarias y E2E | Sí |
 
 GitHub Pages debe estar configurado en **Settings → Pages → Source: `main` / `/docs`**.
 
 ---
 
-## 10. Pruebas
+## 11. Pruebas
 
 ```bash
 node --test tests/*.test.mjs   # unitarias
