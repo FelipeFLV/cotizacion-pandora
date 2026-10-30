@@ -67,9 +67,38 @@ La primera publicación respondió `404 No existe la cotización.` porque las Ed
 - Cubierto por `tests/schema.test.mjs` («the Edge Functions can read and write through service_role»).
 - Efecto secundario detectado: cuando la función no puede leer la fila, responde `404` en vez de mostrar el error real. Queda anotado para la revisión final.
 
-## 7. Pendientes
+## 7. Incidente del slug al guardar después de publicar
 
-- **Publicar desde el panel local no funciona**: las funciones solo aceptan el origen `https://felipeflv.github.io` (`ALLOWED_ORIGIN`). Las pruebas de publicación de este registro se hicieron contra la función real con la sesión del panel; desde el navegador hay que usar el panel ya desplegado en Pages.
-- El panel todavía no está en Pages: el despliegue va con el cierre de la Tarea 12.
+En el panel ya desplegado, editar el precio de una cotización publicada y dejar
+que el autoguardado corriera **anulaba su `slug` y su `status`**: el guardado
+enviaba `slug: meta.slug || null` y recalculaba `status` desde `meta`, y la copia
+en memoria del editor todavía no tenía la URL que había escrito la publicación.
+
+- Síntoma: tras la primera republicación la URL pasó de `aceptacion-panel-4hsz` a
+  `aceptacion-panel-rg48`, dejando la primera página huérfana en Pages.
+- Causa raíz: `quoteToPatch` (`docs/admin/model.js`) trataba `slug` y `status`
+  como datos del contenido, aunque son estado que solo cambian `publish` y
+  `retire` (funciones con `service_role`).
+- Corrección: `quoteToPatch` solo envía `slug` cuando el contenido ya lo trae y no
+  envía `status` nunca; `PADMIN.editor.sync` y `reloadActive()` refrescan la copia
+  del editor con la fila devuelta por la base tras publicar o retirar.
+- Regresión cubierta: `tests/admin-model.test.mjs` («saving never clears a
+  reserved slug nor changes the status»).
+- Verificado en el panel desplegado: 4800 → 4900 → 5000 con la misma URL y tres
+  entradas de historial. La página huérfana se eliminó a mano.
+
+## 8. Sistema de regresión y aceptación
+
+- `npm test`: 153 unitarias + 9 E2E de la matriz y las páginas de cliente.
+- `npm run test:admin`: E2E del panel contra la base real (se omite sin
+  `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `ADMIN_TEST_EMAIL`). Cubre
+  importación, plantilla, «Nuevo cliente», persistencia entre sesiones y vista
+  previa; limpia sus filas y devuelve la plantilla anterior a su lugar.
+- `tests/acceptance.md`: las once casillas de aceptación con su evidencia.
+
+## 9. Pendientes y límites
+
+- **Publicar desde el panel local no funciona**: las funciones solo aceptan el origen `https://felipeflv.github.io` (`ALLOWED_ORIGIN`). Las pruebas de publicación se hicieron contra la función real con la sesión del panel y después desde el panel ya desplegado en Pages.
+- El panel vive en `https://felipeflv.github.io/cotizacion-pandora/admin/` (push a `main`, publicado en `70e91e5`).
 - H&S y Cliente 01 conservan su HTML publicado; si se editan y republican, la página se regenera con la plantilla nueva (mismos medios heredados).
 - `~/.pandora-migration/` (respaldo, originales, tokens) es material local de migración, fuera del repo; conviene borrarlo cuando ya no haga falta.
