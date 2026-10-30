@@ -41,6 +41,7 @@
     $('panel').hidden = true;
     $('signout').hidden = true;
     $('import-open').hidden = true;
+    $('export-open').hidden = true;
     $('who').textContent = '';
     $('login-form').hidden = false;
     $('email').value = PADMIN.config.allowedEmail();
@@ -53,6 +54,7 @@
     $('panel').hidden = false;
     $('signout').hidden = false;
     $('import-open').hidden = false;
+    $('export-open').hidden = false;
     $('who').textContent = user.email;
     $('login-form').reset();
     setLoginStatus('', '');
@@ -290,6 +292,26 @@
     }
   }
 
+  async function exportBackup() {
+    let json = null;
+    try {
+      json = await PADMIN.api.exportBackup();
+      const blob = new root.Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+      const url = root.URL.createObjectURL(blob);
+      const link = doc.createElement('a');
+      const today = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `pandora-respaldo-${today}.json`;
+      doc.body.appendChild(link);
+      link.click();
+      link.remove();
+      root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
+      toast(`Respaldo descargado: ${json.quotes.length} ${json.quotes.length === 1 ? 'cotización' : 'cotizaciones'}.`);
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
   async function boot() {
     const errors = PADMIN.config.validate(root.PANDORA_ADMIN_CONFIG);
     if (errors.length) {
@@ -520,6 +542,7 @@
       if (event.target.closest('#preview-print')) return preview.print();
       if (event.target.closest('#signout')) return PADMIN.auth.signOut();
       if (event.target.closest('#import-open')) return $('import-file').click();
+      if (event.target.closest('#export-open')) return exportBackup();
     });
 
     doc.addEventListener('keydown', (event) => {

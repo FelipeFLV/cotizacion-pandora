@@ -139,3 +139,30 @@ test('saving never clears a reserved slug nor changes the status', () => {
   const published = PADMIN.model.quoteToPatch({ meta: { client: 'Cliente', slug: 'cliente-1-ab12' }, blocks: [] });
   assert.equal(published.slug, 'cliente-1-ab12');
 });
+
+test('a backup can be exported and imported again', () => {
+  const source = backup();
+  const quote = source.quotes[0].quote;
+  const rows = [{ id: 'row-1', data: quote, is_template: true }];
+  const versions = { 'row-1': [{ data: quote, label: 'Publicación', created_at: '2026-10-29T10:00:00.000Z' }] };
+  const bank = [
+    { kind: 'image', title: 'Pieza', url: 'assets/media/x.jpg', service: 'Meta Ads' },
+    { kind: 'video', title: 'Reel', media_id: 'm1', service: '' },
+    { kind: 'image', title: 'Sin origen' }
+  ];
+
+  const json = PADMIN.model.toBackup(rows, versions, bank);
+  assert.equal(json.version, 1, 'el respaldo usa el formato que la importación entiende');
+  assert.equal(json.quotes[0].template, true, 'la plantilla viaja marcada');
+  assert.equal(json.quotes[0].name, 'H&S Inmobiliaria');
+  assert.equal(json.quotes[0].versions.length, 1);
+  assert.equal(json.evidenceBank.images.length, 1, 'las piezas sin origen se omiten');
+  assert.equal(json.evidenceBank.videos[0].src, 'media:m1');
+
+  const parsed = PADMIN.model.fromBackup(json, 'user-1');
+  assert.equal(parsed.quotes.length, 1);
+  assert.equal(parsed.quotes[0].is_template, true);
+  assert.equal(parsed.quotes[0].slug, 'h-s-inmobiliaria-7k2m');
+  assert.equal(parsed.versions.length, 1);
+  assert.equal(parsed.bank.length, 2);
+});

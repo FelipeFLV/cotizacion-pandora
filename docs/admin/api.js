@@ -257,8 +257,15 @@
       return { quotes, versions: parsed.versions.length, bank: parsed.bank.length };
     },
 
-    async listBankItems() {
-      return one(
+    async exportBackup() {
+      const rows = await api.listQuotes({ includeArchived: true });
+      const bank = await api.listBankItems();
+      const versions = {};
+      for (const row of rows) versions[row.id] = await api.listVersions(row.id);
+      return PADMIN.model.toBackup(rows, versions, bank);
+    },
+
+    async listBankItems() {      return one(
         ready().from('bank_items').select('*').order('created_at', { ascending: false }),
         'No se pudo leer la biblioteca.'
       );

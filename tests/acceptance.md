@@ -61,6 +61,14 @@ verifica a mano en el panel desplegado.
   en la página. El video de YouTube se reproduce en la misma página con
   `https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ`.
 
+- [x] **Las imágenes se ven completas y sin el nombre del archivo.**
+
+  Horizontal 1280×720 → 354×199, vertical 9:16 → 332×590 y 4:5 → 354×442: en los
+  tres casos la proporción mostrada es la de la imagen (`object-fit: contain`), sin
+  recorte. Un pie cuyo título es un nombre de archivo (`118767855_1500…_n`,
+  `IMG_4821.jpg`) o una etiqueta genérica (`Video`, `Imagen`) no se muestra; está
+  cubierto por `tests/render-caption.test.mjs` y por el E2E cliente.
+
 - [x] **Un borrador y sus imágenes no existen en el repositorio público.**
 
   Mientras la cotización fue borrador no hubo ningún archivo suyo en `docs/`. La

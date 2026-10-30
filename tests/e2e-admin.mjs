@@ -211,6 +211,28 @@ try {
   assert.equal(client.slug, null, 'el cliente nuevo no hereda la URL de la plantilla');
   assert.equal(client.amount, 2400);
 
+  /* ---------- respaldo descargable desde el panel ---------- */
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#export-open').click()
+  ]);
+  assert.match(download.suggestedFilename(), /^pandora-respaldo-\d{4}-\d{2}-\d{2}\.json$/, 'el respaldo lleva fecha');
+  const exported = JSON.parse(readFileSync(await download.path(), 'utf8'));
+  assert.equal(exported.version, 1, 'el respaldo usa el formato importable');
+  assert.ok(exported.quotes.some((entry) => entry.name === 'E2E Cliente'), 'el cliente de prueba viaja en el respaldo');
+  assert.ok(exported.quotes.some((entry) => entry.template === true), 'la plantilla viaja marcada');
+
+  const roundTrip = await page.evaluate((json) => {
+    const parsed = PADMIN.model.fromBackup(json, 'check');
+    return { quotes: parsed.quotes.length, bank: parsed.bank.length };
+  }, exported);
+  assert.equal(roundTrip.quotes, exported.quotes.length, 'el respaldo se puede volver a importar');
+  assert.equal(
+    roundTrip.bank,
+    exported.evidenceBank.videos.length + exported.evidenceBank.images.length,
+    'el banco de evidencias se puede volver a importar'
+  );
+
   /* ---------- otra computadora: mismo correo, otra sesión de navegador ---------- */
   const other = await browser.newContext();
   const second = await boot(other);

@@ -75,7 +75,7 @@
         owner_id: ownerId,
         slug: meta.slug || null,
         status: quoteStatus(meta),
-        is_template: false,
+        is_template: Boolean(entry.template),
         data: cleanQuote(quote),
         published_url: meta.publishedUrl || '',
         published_at: meta.publishedAt || null,
@@ -156,6 +156,46 @@
     return patch;
   }
 
+  // Respaldo reimportable: mismo formato que guarda la matriz (version 1) para
+  // poder restaurarlo con «Importar respaldo» desde cualquier navegador.
+  function toBackup(rows, versionsById, bank) {
+    const versions = versionsById || {};
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      quotes: [],
+      evidenceBank: { videos: [], images: [] }
+    };
+
+    (rows || []).forEach((row) => {
+      const quote = cleanQuote((row && row.data) || {});
+      data.quotes.push({
+        id: row.id,
+        name: (quote.meta && quote.meta.client) || '',
+        template: Boolean(row.is_template),
+        quote,
+        versions: (versions[row.id] || []).map((entry) => ({
+          quote: cleanQuote(entry.data || {}),
+          label: entry.label || '',
+          at: entry.created_at || ''
+        }))
+      });
+    });
+
+    (bank || []).forEach((item) => {
+      const src = item.url || (item.media_id ? `media:${item.media_id}` : '');
+      if (!src) return;
+      const kind = item.kind === 'video' ? 'videos' : 'images';
+      data.evidenceBank[kind].push({
+        title: item.title || '',
+        src,
+        service: item.service || ''
+      });
+    });
+
+    return data;
+  }
+
   function versionSummary(entry) {
     return {
       at: (entry && entry.created_at) || '',
@@ -164,5 +204,5 @@
     };
   }
 
-  PADMIN.model = { fromBackup, newClientData, rowToQuote, quoteToPatch, versionSummary, uuid };
+  PADMIN.model = { fromBackup, toBackup, newClientData, rowToQuote, quoteToPatch, versionSummary, uuid };
 })(typeof window !== 'undefined' ? window : globalThis);

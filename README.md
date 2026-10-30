@@ -22,7 +22,8 @@ Panel de escritorio (no está pensado para móvil): <https://felipeflv.github.io
 - **Retirar**: borra la página y sus imágenes del repo (la URL pasa a 404) y conserva la cotización, su slug y su historial en el panel.
 - **Historial**: queda una versión en cada publicación y en cada captura manual; se puede restaurar, y antes de restaurar se guarda «Antes de restaurar».
 - **Plantilla**: una cotización marcada como plantilla no se publica ni se archiva; **Nuevo cliente** crea una copia limpia con identidad y URL nuevas.
-- **Evidencias**: las imágenes se suben desde el panel (se comprimen en el navegador y se añaden al banco); los videos van como enlace de YouTube o Vimeo, nunca alojados aquí.
+- **Evidencias**: las imágenes se suben desde el panel (se comprimen en el navegador y se añaden al banco); los videos van como enlace de YouTube o Vimeo, nunca alojados aquí. Cada pieza se muestra completa, sin recortes (también las verticales de historia), y el pie solo aparece cuando tiene un título real: nunca el nombre del archivo.
+- **Respaldo**: **Exportar respaldo** descarga un JSON con todas las cotizaciones, su historial y el banco de evidencias, en el mismo formato que **Importar respaldo**; sirve para restaurar el panel en otro proyecto o si Supabase falla. No incluye los binarios de las imágenes (viven en el cubo privado).
 - **PDF**: **PDF A4** abre el diálogo de impresión con la hoja de estilos de impresión; el resultado coincide con la página publicada.
 - **Pruebas**: `npm test` corre las unitarias y los E2E de la matriz y las páginas de cliente; `npm run test:admin` recorre el panel contra la base real (se omite sin `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `ADMIN_TEST_EMAIL`). La aceptación está en `tests/acceptance.md`.
 
