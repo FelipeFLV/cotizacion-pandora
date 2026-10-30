@@ -17,6 +17,30 @@
 
   const asset = (src) => (P.assetUrl ? P.assetUrl(src, P.assetBase) : src);
 
+  // Títulos que no aportan nada en la página: nombres de archivo y etiquetas
+  // genéricas. En el panel se siguen viendo para poder editarlos.
+  const GENERIC_CAPTION = /^(video|vídeo|imagen|foto|pieza|sin título|sin titulo)$/i;
+  const FILE_EXT = /\.(jpe?g|png|webp|gif|avif|heic|heif|mp4|mov|m4v|webm|svg)$/i;
+  const FILE_NAME = /_\d{9,}_|^\d{9,}(?:_|$)|^(?:img|dsc|pxl|vid)[-_ ]?\d|^(?:whatsapp|screenshot|captura|photo)\b|^screen shot\b/i;
+
+  function captionText(title) {
+    const text = String(title == null ? '' : title).trim();
+    if (!text || GENERIC_CAPTION.test(text) || FILE_EXT.test(text) || FILE_NAME.test(text)) return '';
+    return text;
+  }
+
+  function capStatic(title) {
+    const text = captionText(title);
+    return text ? `<figcaption class="shot-cap"><span class="txt">${esc(text)}</span></figcaption>` : '';
+  }
+
+  function capEditable(path, title, extra) {
+    if (isRO()) return capStatic(title);
+    return `<figcaption class="shot-cap">${txt(path, title)}${extra || ''}</figcaption>`;
+  }
+
+  const altText = (title, fallback) => esc(captionText(title) || fallback);
+
   const isRO = () => OPTS.readonly || OPTS.view === 'client';
 
   const ed = (path, value, cls) =>
@@ -90,16 +114,16 @@
               </button>
               <span class="shot-tag">Video</span>
             </div>
-            <figcaption class="shot-cap"><span class="txt">${esc(video.title)}</span></figcaption>
+            ${capStatic(video.title)}
           </figure>`).join('')}
 
         ${pieces.images.map((image, ii) => `
           <figure class="still" data-image>
             <button class="still-link" data-action="lightbox" data-general="1" data-index="${ii}"
-                    aria-label="Ampliar ${esc(image.title || 'pieza')}">
-              <img src="${esc(asset(image.src))}" alt="${esc(image.title || '')}" loading="lazy" draggable="false">
+                    aria-label="Ampliar ${altText(image.title, 'pieza')}">
+              <img src="${esc(asset(image.src))}" alt="${altText(image.title, 'Evidencia de trabajo')}" loading="lazy" draggable="false">
             </button>
-            <figcaption class="shot-cap"><span class="txt">${esc(image.title)}</span></figcaption>
+            ${capStatic(image.title)}
           </figure>`).join('')}
       </div>
 
@@ -230,22 +254,16 @@
                   </button>
                   <span class="shot-tag">Video</span>
                 </div>
-                <figcaption class="shot-cap">
-                  ${txt(`blocks.${bi}.videos.${vi}.title`, video.title)}
-                  ${editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="videos" data-index="${vi}">Reemplazar</button>`)}
-                </figcaption>
+                ${capEditable(`blocks.${bi}.videos.${vi}.title`, video.title, editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="videos" data-index="${vi}">Reemplazar</button>`))}
               </figure>`).join('')}
 
             ${(block.images || []).map((image, ii) => `
               <figure class="still" data-image>
                 <button class="still-link" data-action="lightbox" data-block="${bi}" data-index="${ii}"
-                        aria-label="Ampliar ${esc(image.title || 'pieza')}">
-                  <img src="${esc(asset(image.src))}" alt="${esc(image.title || '')}" loading="lazy" draggable="false">
+                        aria-label="Ampliar ${altText(image.title, 'pieza')}">
+                  <img src="${esc(asset(image.src))}" alt="${altText(image.title, 'Evidencia de trabajo')}" loading="lazy" draggable="false">
                 </button>
-                <figcaption class="shot-cap">
-                  ${txt(`blocks.${bi}.images.${ii}.title`, image.title)}
-                  ${editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="images" data-index="${ii}">Reemplazar</button>`)}
-                </figcaption>
+                ${capEditable(`blocks.${bi}.images.${ii}.title`, image.title, editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="images" data-index="${ii}">Reemplazar</button>`))}
               </figure>`).join('')}
           </div>
 
@@ -504,6 +522,7 @@
     conditions: renderConditions,
     picker: renderPicker,
     embedUrl,
-    esc
+    esc,
+    captionText
   };
 })();

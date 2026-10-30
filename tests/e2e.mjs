@@ -27,6 +27,8 @@ function freePort() {
 }
 
 const bank = P.seedEvidenceBank();
+// Una pieza con nombre de archivo como título: su pie no debe mostrarse.
+bank.images[0].title = '118767855_1500135286853711_6259075927765278078_n';
 const MODES = ['service', 'general', 'both', 'none'];
 
 function clientPackage(mode) {
@@ -417,6 +419,21 @@ try {
   assert.equal(await page.getByText('Editar', { exact: true }).count(), 0, 'no debe aparecer “Editar”');
   assert.equal(await page.locator('[data-action="print"]').count(), 1, 'debe existir Exportar PDF');
   assert.match(await page.locator('[data-date]').innerText(), /27 de octubre de 2026/);
+
+  const stills = await page.evaluate(() => ({
+    count: document.querySelectorAll('.still').length,
+    captions: Array.from(document.querySelectorAll('.still .shot-cap')).map((node) => node.textContent.trim()),
+    fits: Array.from(document.querySelectorAll('.still-link img')).map((img) => getComputedStyle(img).objectFit)
+  }));
+  assert.ok(stills.count > 0, 'la cotización de prueba debe traer imágenes');
+  assert.ok(
+    stills.captions.every((text) => !/\.(jpe?g|png|webp|gif|mov|mp4)$/i.test(text) && !/_\d{9,}_/.test(text)),
+    `ningún pie debe ser un nombre de archivo: ${stills.captions.join(' | ')}`
+  );
+  assert.ok(
+    stills.fits.every((fit) => fit === 'contain'),
+    `las imágenes deben verse completas, no recortadas: ${stills.fits.join(', ')}`
+  );
 
   const layout = {};
   for (const mode of MODES) {

@@ -202,7 +202,8 @@
     box-shadow: none;
     border: .4pt solid rgba(40, 54, 59, .14);
   }
-  .still-link { aspect-ratio: 4 / 5; height: auto; }
+  .still-link { aspect-ratio: auto; height: auto; }
+  .still-link img { max-height: 110mm; }
   .shot-cap { font-size: 8pt; margin-top: 2mm; }
 
   /* proceso y resumen del alcance */
