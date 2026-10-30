@@ -196,6 +196,12 @@
     render();
   }
 
+  function sync(data, row) {
+    if (!current || !data) return;
+    current = data;
+    if (PADMIN.publish) PADMIN.publish.setRow(row || null);
+  }
+
   function repaintPublish() {
     if (!host) return;
     const sectionNode = host.querySelector('#sec-publicacion');
@@ -414,6 +420,7 @@
   PADMIN.editor = {
     mount,
     refresh,
+    sync,
     flush,
     status,
     repaint: repaintPublish,

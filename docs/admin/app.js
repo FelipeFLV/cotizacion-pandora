@@ -203,8 +203,17 @@
     await renderEditor();
   }
 
-  async function selectQuote(id) {
-    const mounted = state.editing && state.editing.id === id && !state.editing.loading;
+  // Tras publicar o retirar, la fila cambia (slug, estado, URL). Se recarga la
+  // lista y se refresca el editor sin remontarlo, para no perder scroll ni foco.
+  async function reloadActive() {
+    await load();
+    const row = active();
+    if (!row || !state.editing || state.editing.id !== row.id) return;
+    state.editing.quote = row.data;
+    PADMIN.editor.sync(row.data, row);
+  }
+
+  async function selectQuote(id) {    const mounted = state.editing && state.editing.id === id && !state.editing.loading;
     if (mounted && state.activeId === id) return;
     if (state.activeId && state.activeId !== id) await PADMIN.editor.flush();
     state.activeId = id;
@@ -386,10 +395,10 @@
 
   PADMIN.publish.configure({
     async onPublished() {
-      await load();
+      await reloadActive();
     },
     async onRetired() {
-      await load();
+      await reloadActive();
     },
     async onRestored() {
       state.editing = null;

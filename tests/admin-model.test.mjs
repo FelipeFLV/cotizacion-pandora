@@ -130,3 +130,12 @@ test('rows become quotes again for the editor', () => {
   assert.equal(quote.meta.slug, 'otro-slug');
   assert.equal(quote.meta.isDraft, false);
 });
+
+test('saving never clears a reserved slug nor changes the status', () => {
+  const fresh = PADMIN.model.quoteToPatch({ meta: { client: 'Nuevo', slug: '' }, blocks: [] });
+  assert.equal('slug' in fresh, false, 'un slug vacío no debe borrar el de la fila');
+  assert.equal('status' in fresh, false, 'el estado solo lo cambian publicar y retirar');
+
+  const published = PADMIN.model.quoteToPatch({ meta: { client: 'Cliente', slug: 'cliente-1-ab12' }, blocks: [] });
+  assert.equal(published.slug, 'cliente-1-ab12');
+});

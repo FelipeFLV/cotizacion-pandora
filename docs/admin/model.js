@@ -150,11 +150,10 @@
 
   function quoteToPatch(quote) {
     const meta = (quote && quote.meta) || {};
-    return {
-      data: cleanQuote(quote),
-      slug: meta.slug || null,
-      status: quoteStatus(meta)
-    };
+    const patch = { data: cleanQuote(quote) };
+    // El slug se reserva al publicar y no se borra al guardar: la URL es estable.
+    if (meta.slug) patch.slug = meta.slug;
+    return patch;
   }
 
   function versionSummary(entry) {
