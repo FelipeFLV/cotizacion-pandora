@@ -8,6 +8,7 @@
   const LABELS = {
     template: 'Plantilla',
     published: 'Publicada',
+    hidden: 'Oculta',
     retired: 'Retirada',
     draft: 'Borrador'
   };
@@ -16,6 +17,10 @@
   const PUBLISHED = 'Publicado. GitHub Pages puede tardar un minuto.';
   const RETIRING = 'Retirando…';
   const RETIRED = 'Retirada. La URL dejará de existir en un minuto.';
+  const HIDING = 'Ocultando…';
+  const SHOWING = 'Mostrando…';
+  const HIDDEN_NOTE = 'Oculta. El cliente verá «Propuesta en preparación» en la misma URL.';
+  const VISIBLE_NOTE = 'Visible. La página vuelve a mostrar la propuesta.';
 
   let row = null;
   let busy = '';
@@ -46,8 +51,10 @@
 
   function stateOf(value) {
     const item = value || {};
+    const meta = (item.data && item.data.meta) || {};
     if (item.is_template || item.isTemplate) return 'template';
     if (item.status === 'retired' || item.retired_at) return 'retired';
+    if (item.status === 'published' && meta.hidden) return 'hidden';
     if (item.status === 'published') return 'published';
     return 'draft';
   }
@@ -123,6 +130,7 @@
 
   function hintOf(kind, name) {
     if (kind === 'template') return 'La plantilla no se publica: crea un cliente a partir de ella.';
+    if (kind === 'hidden') return 'La página está oculta: el cliente ve una propuesta en preparación.';
     if (!name) return 'Escribe el nombre del cliente antes de publicar.';
     return 'Publicar crea la página del cliente con el contenido guardado.';
   }
@@ -138,6 +146,8 @@
     const canPublish = kind !== 'template' && Boolean(name) && !isBusy;
     const publishLabel = kind === 'published' ? 'Republicar' : (kind === 'retired' ? 'Publicar de nuevo' : 'Publicar');
     const progressLabel = busy === 'retire' ? RETIRING : (busy === 'restore' ? 'Restaurando…' : PUBLISHING);
+    const visible = !(quoteData.meta && quoteData.meta.hidden);
+    const canToggle = kind !== 'template' && !isBusy;
     const message = error
       ? `<p class="pub-status is-error">${esc(error)} <button class="mini" data-op="pub-retry" type="button">Reintentar</button></p>`
       : (note ? `<p class="pub-status">${esc(note)}</p>` : '');
@@ -149,6 +159,10 @@
         ${url ? `<span class="pub-url">${esc(url)}</span>` : '<span class="pub-url is-empty">Sin URL todavía.</span>'}
       </div>
       ${isBusy ? `<div class="pub-progress" role="progressbar" aria-label="${esc(progressLabel)}"></div>` : ''}
+      <label class="pub-visible">
+        <input type="checkbox" data-op="pub-visible"${visible ? ' checked' : ''}${canToggle ? '' : ' disabled'}>
+        <span>Visible para el cliente</span>
+      </label>
       <div class="pub-actions">
         <button class="mini" data-op="pub-publish" type="button"${canPublish ? '' : ' disabled'}>${publishLabel}</button>
         <button class="mini" data-op="pub-retire" type="button"${url && !isBusy ? '' : ' disabled'}>Retirar</button>
@@ -171,7 +185,8 @@
     return String(meta.client || '').trim() || clientOf(row);
   }
 
-  async function publish() {
+  async function publish(options) {
+    const opts = options || {};
     if (!row || stateOf(row) === 'template') return;
     try {
       await PADMIN.editor.flush();
@@ -187,7 +202,7 @@
       repaint();
       return;
     }
-    if (stateOf(row) === 'published' && !root.confirm('Esta cotización ya está publicada. Se reemplazará el contenido y se mantendrá la misma URL. ¿Publicar?')) {
+    if (!opts.quiet && stateOf(row) === 'published' && !root.confirm('Esta cotización ya está publicada. Se reemplazará el contenido y se mantendrá la misma URL. ¿Publicar?')) {
       return;
     }
 
@@ -213,6 +228,46 @@
       note = '';
     } finally {
       busy = '';
+      repaint();
+    }
+  }
+
+  async function setVisible(next) {
+    if (!row || stateOf(row) === 'template') return;
+    const quote = (PADMIN.editor && typeof PADMIN.editor.currentQuote === 'function'
+      ? PADMIN.editor.currentQuote()
+      : null) || {};
+    const hidden = !next;
+    if (Boolean(quote.meta && quote.meta.hidden) === hidden) return;
+
+    PADMIN.editor.setMeta('hidden', hidden);
+    try {
+      await PADMIN.editor.flush();
+    } catch (failure) {
+      error = 'No se pudo guardar la visibilidad.';
+      note = '';
+      repaint();
+      return;
+    }
+
+    const kind = stateOf(row);
+    if (!urlOf(row) || kind === 'retired') {
+      const data = Object.assign({}, row.data || {});
+      data.meta = Object.assign({}, data.meta || {}, { hidden });
+      row = Object.assign({}, row, { data });
+      note = hidden
+        ? 'Oculta. La próxima publicación mostrará la página de espera.'
+        : 'Visible. La próxima publicación mostrará la propuesta.';
+      error = '';
+      repaint();
+      return;
+    }
+
+    note = hidden ? HIDING : SHOWING;
+    error = '';
+    await publish({ quiet: true });
+    if (!error) {
+      note = hidden ? HIDDEN_NOTE : VISIBLE_NOTE;
       repaint();
     }
   }
@@ -300,6 +355,7 @@
   async function op(name, node) {
     const data = (node && node.dataset) || {};
     if (name === 'pub-publish') return publish();
+    if (name === 'pub-visible') return setVisible(Boolean(node && node.checked));
     if (name === 'pub-retire') return withdraw();
     if (name === 'pub-copy') {
       const ok = await copyUrl(urlOf(row));
@@ -324,6 +380,7 @@
     op,
     quote,
     retire,
+    setVisible,
     copyUrl,
     stateOf,
     urlOf,

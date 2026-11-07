@@ -12,7 +12,8 @@
     root.P.client.init({
       quote: data.quote,
       general: data.general,
-      meta: data.meta || {}
+      meta: data.meta || {},
+      preview: true
     });
     const name = (data.quote.meta && data.quote.meta.client) || 'Pandora';
     root.document.title = `Vista previa · ${name}`;

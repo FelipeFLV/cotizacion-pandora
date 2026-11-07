@@ -435,8 +435,40 @@
     };
   }
 
+  function clientLogoNode() {
+    let node = document.querySelector('[data-client-logo]');
+    if (node) return node;
+    const name = document.getElementById('client-name');
+    if (!name || !name.parentNode) return null;
+    node = document.createElement('img');
+    node.className = 'client-logo';
+    node.setAttribute('data-client-logo', '');
+    node.alt = '';
+    node.hidden = true;
+    name.parentNode.insertBefore(node, name);
+    return node;
+  }
+
+  function syncClientLogo(quote) {
+    const meta = quote.meta || {};
+    const logo = String(meta.clientLogo || '').trim();
+    const node = clientLogoNode();
+    if (!node) return;
+    if (logo) {
+      if (node.getAttribute('src') !== logo) node.src = logo;
+      node.alt = `Logo de ${meta.client || 'el cliente'}`;
+      node.hidden = false;
+    } else {
+      node.removeAttribute('src');
+      node.alt = '';
+      node.hidden = true;
+    }
+  }
+
   function sync(quote) {
     const values = derived(quote);
+
+    syncClientLogo(quote);
 
     document.querySelectorAll('[data-text]').forEach((el) => {
       const path = el.dataset.text;

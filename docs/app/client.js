@@ -153,12 +153,38 @@
     });
   }
 
+  function paused(quote) {
+    const meta = (quote && quote.meta) || {};
+    const base = P.assetBase || '';
+    const name = String(meta.client || '').trim();
+    const logo = P.render.esc(P.assetUrl('assets/logo-wordmark.png', base));
+    document.body.classList.add('is-paused');
+
+    const main = $('#contenido');
+    if (main) {
+      main.innerHTML = `<section class="paused">
+        <img class="paused-mark" src="${logo}" alt="Pandora Marketing">
+        <p class="paused-kicker">Propuesta en preparación</p>
+        <h1>Estamos afinando los últimos detalles${name ? ` de la propuesta para ${P.render.esc(name)}` : ''}.</h1>
+        <p>La compartiremos contigo en cuanto esté lista. Mientras tanto, puedes escribirnos a
+          <a href="mailto:info@pandoramarketing.net">info@pandoramarketing.net</a>.</p>
+      </section>`;
+    }
+
+    document.title = name ? `Propuesta en preparación · ${name}` : 'Propuesta en preparación · Pandora';
+    document.body.classList.add('ready');
+  }
+
   function init(data) {
     const payload = data || {};
     if (!payload.quote) return;
     state.quote = payload.quote;
     state.general = payload.general || { videos: [], images: [] };
     state.meta = payload.meta || {};
+    if (payload.quote.meta && payload.quote.meta.hidden && !payload.preview) {
+      paused(payload.quote);
+      return;
+    }
     bind();
     render();
     document.body.classList.add('ready');

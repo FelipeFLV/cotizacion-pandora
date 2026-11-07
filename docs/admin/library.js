@@ -9,12 +9,14 @@
     { id: 'all', label: 'Todas' },
     { id: 'draft', label: 'Borradores' },
     { id: 'published', label: 'Publicadas' },
+    { id: 'hidden', label: 'Ocultas' },
     { id: 'retired', label: 'Retiradas' }
   ];
 
   const LABELS = {
     template: 'Plantilla',
     published: 'Publicada',
+    hidden: 'Oculta',
     retired: 'Retirada',
     draft: 'Borrador',
     pending: 'Publicando'
@@ -31,9 +33,11 @@
 
   function state(row) {
     const entry = row || {};
+    const meta = (entry.data && entry.data.meta) || {};
     if (entry.is_template) return 'template';
     if (entry.pending) return 'pending';
     if (entry.status === 'retired' || entry.retired_at) return 'retired';
+    if (entry.status === 'published' && meta.hidden) return 'hidden';
     if (entry.status === 'published') return 'published';
     return 'draft';
   }
@@ -62,6 +66,7 @@
     const kind = state(row);
     if (filter === 'draft' && kind !== 'draft' && kind !== 'template') return false;
     if (filter === 'published' && kind !== 'published') return false;
+    if (filter === 'hidden' && kind !== 'hidden') return false;
     if (filter === 'retired' && kind !== 'retired') return false;
     if (!query) return true;
     const needle = query.trim().toLowerCase();
@@ -79,9 +84,9 @@
     const parts = [
       `<button class="mini" data-action="duplicate" data-id="${id}">Duplicar</button>`,
       `<button class="mini" data-action="history" data-id="${id}">Historial</button>`,
-      `<button class="mini" data-action="publish" data-id="${id}">${kind === 'published' ? 'Republicar' : 'Publicar'}</button>`
+      `<button class="mini" data-action="publish" data-id="${id}">${kind === 'published' || kind === 'hidden' ? 'Republicar' : 'Publicar'}</button>`
     ];
-    if (kind !== 'published') {
+    if (kind !== 'published' && kind !== 'hidden') {
       parts.push(`<button class="mini" data-action="set-template" data-id="${id}">Usar como plantilla</button>`);
     }
     parts.push(`<button class="mini mini-quiet" data-action="archive" data-id="${id}">Archivar</button>`);
@@ -103,7 +108,7 @@
         <span class="quote-line">${esc(services.join(' · '))}${services.length && date ? ' · ' : ''}${esc(date)}</span>
       </button>
       <span class="pill pill-${kind}">${LABELS[kind]}</span>
-      ${url && kind === 'published' ? `<a class="quote-link" href="${esc(url)}" target="_blank" rel="noopener">Ver publicada</a>` : ''}
+      ${url && (kind === 'published' || kind === 'hidden') ? `<a class="quote-link" href="${esc(url)}" target="_blank" rel="noopener">Ver página</a>` : ''}
       <div class="quote-actions">${actionsFor(kind, row)}</div>
     </article>`;
   }

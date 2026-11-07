@@ -119,6 +119,7 @@
     const quote = clone(template || {});
     quote.meta = quote.meta || {};
     quote.meta.client = 'Cliente sin nombre';
+    quote.meta.clientLogo = '';
     quote.meta.quoteNo = '';
     quote.meta.slug = '';
     quote.meta.generatedAt = '';
@@ -126,6 +127,7 @@
     quote.meta.publishedAt = '';
     quote.meta.retiredAt = '';
     quote.meta.retireRequestedAt = '';
+    quote.meta.hidden = false;
     quote.meta.isDraft = false;
     quote.meta.date = todayISO();
     quote.evidence = quote.evidence && quote.evidence.mode

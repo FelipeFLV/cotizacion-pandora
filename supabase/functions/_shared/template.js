@@ -63,6 +63,7 @@ export const TEMPLATE = `<!DOCTYPE html>
         </p>
 
         <p class="for">Propuesta preparada para</p>
+        <img class="client-logo" data-client-logo alt="" hidden>
         <h1 class="client" id="client-name" data-field="meta.client"></h1>
         <p class="lede" data-field="meta.lede"></p>
 

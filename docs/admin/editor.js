@@ -47,6 +47,24 @@
     </section>`;
   }
 
+  function logoField() {
+    const meta = current.meta || {};
+    const logo = String(meta.clientLogo || '').trim();
+    return `<div class="logo-field">
+      <span class="field-label">Logo del cliente <em>opcional</em></span>
+      <div class="logo-row">
+        ${logo ? `<img class="logo-preview" src="${esc(logo)}" alt="Logo del cliente">` : ''}
+        <span class="logo-empty">${logo ? 'Se muestra sobre el nombre en la página y en el PDF.' : 'Sin logo: la página muestra solo el nombre en texto.'}</span>
+        <span class="logo-tools">
+          <label class="mini logo-pick">${logo ? 'Cambiar logo' : 'Subir logo'}
+            <input type="file" data-logo-input accept="image/png,image/jpeg,image/webp" hidden>
+          </label>
+          ${logo ? '<button class="mini mini-quiet" data-op="logo-clear" type="button">Quitar</button>' : ''}
+        </span>
+      </div>
+    </div>`;
+  }
+
   function clientSection() {
     const meta = current.meta || {};
     return section('cliente', 'Cliente', `<div class="grid-2">
@@ -59,7 +77,8 @@
       ${F.textarea({ path: 'meta.lede', label: 'Entradilla', value: meta.lede, rows: 3 })}
       ${F.textarea({ path: 'meta.closing', label: 'Cierre', value: meta.closing, rows: 3 })}
       ${F.check({ path: 'meta.taxEnabled', label: 'Aplicar IGV', checked: meta.taxEnabled })}
-    </div>`);
+    </div>
+    ${logoField()}`);
   }
 
   function blockSection(block, index) {
@@ -202,6 +221,15 @@
     if (PADMIN.publish) PADMIN.publish.setRow(row || null);
   }
 
+  function setMeta(key, value) {
+    if (!current) return null;
+    current.meta = current.meta || {};
+    current.meta[key] = value;
+    if (onChange) onChange(current);
+    scheduleSave();
+    return current;
+  }
+
   function repaintPublish() {
     if (!host) return;
     const sectionNode = host.querySelector('#sec-publicacion');
@@ -314,6 +342,30 @@
     }
   }
 
+  async function uploadLogo(file) {
+    try {
+      status('Preparando el logo…', 'busy');
+      const data = await PADMIN.media.logo(file);
+      current.meta = current.meta || {};
+      current.meta.clientLogo = data;
+      render();
+      if (onChange) onChange(current);
+      scheduleSave();
+      status('Logo listo: se guarda con la cotización.', '');
+    } catch (error) {
+      status(error.message, 'error', false);
+    }
+  }
+
+  function clearLogo() {
+    if (!current) return;
+    current.meta = current.meta || {};
+    current.meta.clientLogo = '';
+    render();
+    if (onChange) onChange(current);
+    scheduleSave();
+  }
+
   async function uploadFile(input, file) {
     const path = input.dataset.evFile;
     try {
@@ -364,6 +416,7 @@
       if (PADMIN.publish) await PADMIN.publish.op(op, node);
       return;
     }
+    if (op === 'logo-clear') return clearLogo();
     const index = Number(node.dataset.index);
     let next = current;
     if (op === 'block-add') next = M.addBlock(current);
@@ -404,11 +457,24 @@
     host.addEventListener('click', async (event) => {
       const op = event.target.closest('[data-op]');
       if (!op) return;
+      if (op.matches('input[type="checkbox"]')) return;
       event.preventDefault();
       if (op.dataset.op === 'retry-save') return flush();
       await onOp(op.dataset.op, op);
     });
     host.addEventListener('change', async (event) => {
+      const checkbox = event.target.closest('input[type="checkbox"][data-op]');
+      if (checkbox) {
+        await onOp(checkbox.dataset.op, checkbox);
+        return;
+      }
+      const logoInput = event.target.closest('[data-logo-input]');
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        const logoFile = logoInput.files[0];
+        await uploadLogo(logoFile);
+        logoInput.value = '';
+        return;
+      }
       const input = event.target.closest('[data-ev-file]');
       if (!input || !input.files || !input.files[0]) return;
       const file = input.files[0];
@@ -424,6 +490,7 @@
     flush,
     status,
     repaint: repaintPublish,
+    setMeta,
     currentQuote() {
       return current;
     }

@@ -73,6 +73,7 @@
       const kind = PADMIN.library.state(row);
       if (state.filter === 'draft' && kind !== 'draft' && kind !== 'template') return false;
       if (state.filter === 'published' && kind !== 'published') return false;
+      if (state.filter === 'hidden' && kind !== 'hidden') return false;
       if (state.filter === 'retired' && kind !== 'retired') return false;
       return true;
     });
@@ -371,7 +372,8 @@
         type: 'pandora-preview',
         quote: data.quote,
         general: data.general,
-        meta: data.meta || {}
+        meta: data.meta || {},
+        preview: true
       }, root.location.origin);
       ready = true;
       if (wantPrint) {

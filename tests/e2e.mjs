@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import net from 'node:net';
 import { launch, watch } from './helpers/browser.mjs';
+import { dataUrl, solidPng } from './helpers/png.mjs';
 import { buildClientHtml } from '../tools/publicar-lib.mjs';
 
 const require = createRequire(import.meta.url);
@@ -31,10 +32,14 @@ const bank = P.seedEvidenceBank();
 bank.images[0].title = '118767855_1500135286853711_6259075927765278078_n';
 const MODES = ['service', 'general', 'both', 'none'];
 
+// Logo de cliente de prueba (160×48): viaja como data URL con la cotización.
+const LOGO_DATA = dataUrl(solidPng(160, 48, [70, 0, 187]));
+
 function clientPackage(mode) {
   const quote = P.defaultQuote();
   quote.id = 'q_e2e';
   quote.meta.client = 'Cliente Prueba';
+  if (mode === 'service') quote.meta.clientLogo = LOGO_DATA;
   quote.evidence = {
     mode,
     generalIds: { videos: [bank.videos[0].id], images: [bank.images[0].id] }
@@ -56,6 +61,16 @@ function writeClientPage(mode) {
     path.join(dir, 'index.html'),
     buildClientHtml({ template, pkg: clientPackage(mode), base })
   );
+}
+
+function writeHiddenPage() {
+  const template = readFileSync(path.join(root, 'tools/cliente.template.html'), 'utf8');
+  const pkg = clientPackage('service');
+  pkg.slug = '_e2e-hidden';
+  pkg.quote.meta.hidden = true;
+  const dir = path.join(root, 'docs/c/_e2e-hidden');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'index.html'), buildClientHtml({ template, pkg, base }));
 }
 
 async function waitForServer(url) {
@@ -406,6 +421,7 @@ try {
 
   /* ---------- versión cliente ---------- */
   MODES.forEach(writeClientPage);
+  writeHiddenPage();
   await waitForServer(`${serverUrl}/c/_e2e-service/`);
 
   const clientContext = await browser.newContext();
@@ -419,6 +435,24 @@ try {
   assert.equal(await page.getByText('Editar', { exact: true }).count(), 0, 'no debe aparecer “Editar”');
   assert.equal(await page.locator('[data-action="print"]').count(), 1, 'debe existir Exportar PDF');
   assert.match(await page.locator('[data-date]').innerText(), /27 de octubre de 2026/);
+
+  const brand = await page.evaluate(() => {
+    const node = document.querySelector('.brand');
+    const text = node ? node.querySelector('.brand-name') : null;
+    const logo = document.querySelector('[data-client-logo]');
+    const rect = logo ? logo.getBoundingClientRect() : null;
+    return {
+      background: node ? getComputedStyle(node).backgroundImage : '',
+      textDisplay: text ? getComputedStyle(text).display : 'missing',
+      logoShown: logo ? !logo.hidden : false,
+      logoWidth: rect ? Math.round(rect.width) : 0,
+      logoNatural: logo ? logo.naturalWidth : 0
+    };
+  });
+  assert.match(brand.background, /logo-wordmark\.png/, 'el header usa el logotipo de la marca');
+  assert.equal(brand.textDisplay, 'none', 'el header no escribe el nombre con otra tipografía');
+  assert.equal(brand.logoShown, true, 'el logo del cliente se muestra cuando existe');
+  assert.ok(brand.logoWidth > 0 && brand.logoNatural > 0, 'el logo del cliente carga en la página');
 
   const stills = await page.evaluate(() => ({
     count: document.querySelectorAll('.still').length,
@@ -451,6 +485,24 @@ try {
   assert.deepEqual(layout.general, { service: 0, general: 1, navEvidence: true, navGeneral: false }, 'modo general');
   assert.deepEqual(layout.both, { service: 1, general: 1, navEvidence: false, navGeneral: false }, 'modo ambas');
   assert.deepEqual(layout.none, { service: 0, general: 0, navEvidence: true, navGeneral: true }, 'modo ocultar');
+
+  /* ---------- oculta para el cliente ---------- */
+  await page.goto(`${serverUrl}/c/_e2e-hidden/`);
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.locator('.paused').count(), 1, 'la página oculta muestra el aviso');
+  assert.equal(await page.locator('.hero').count(), 0, 'la página oculta no muestra la cotización');
+  assert.match(await page.locator('.paused h1').innerText(), /Estamos afinando/, 'el aviso explica el estado');
+  assert.equal(
+    await page.locator('.paused-mark').getAttribute('src'),
+    '../../assets/logo-wordmark.png',
+    'el aviso reutiliza el logotipo de la marca'
+  );
+  assert.equal(await page.locator('[data-action="print"]').isVisible(), false, 'no se puede exportar una página oculta');
+  assert.equal(await page.evaluate(() => document.body.classList.contains('is-paused')), true);
+
+  await page.goto(`${serverUrl}/c/_e2e-general/`);
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.locator('[data-client-logo]').isHidden(), true, 'sin logo se muestra solo el nombre');
 
   await page.goto(`${serverUrl}/c/_e2e-general/`);
   await page.waitForSelector('body.ready');

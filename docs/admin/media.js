@@ -140,10 +140,58 @@
     };
   }
 
+  const LOGO_SIDE = 640;
+  const LOGO_MAX_URL = 220 * 1024;
+
+  function dataUrlOf(canvas, mime, quality) {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) return resolve('');
+        const reader = new root.FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
+      }, mime, quality);
+    });
+  }
+
+  // El logo viaja dentro de la cotización como data URL: no depende de una
+  // imagen privada ni de un despliegue nuevo, y se imprime con la página.
+  async function logo(file) {
+    assertUpload(0, file && file.type, file && file.size);
+    let bitmap;
+    try {
+      bitmap = await root.createImageBitmap(file);
+    } catch (error) {
+      throw new Error('No se pudo leer el logo. Usa un PNG, JPG o WebP.');
+    }
+    const mime = supportsWebp() ? 'image/webp' : 'image/jpeg';
+    const canvas = root.document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    try {
+      for (const side of [LOGO_SIDE, 480, 360, 260]) {
+        const size = fit(bitmap.width, bitmap.height, side);
+        if (!size.width) break;
+        canvas.width = size.width;
+        canvas.height = size.height;
+        context.clearRect(0, 0, size.width, size.height);
+        context.drawImage(bitmap, 0, 0, size.width, size.height);
+        for (const quality of [0.9, 0.8, 0.7]) {
+          const data = await dataUrlOf(canvas, mime, quality);
+          if (data && data.length <= LOGO_MAX_URL) return data;
+        }
+      }
+    } finally {
+      if (typeof bitmap.close === 'function') bitmap.close();
+    }
+    throw new Error('El logo no se pudo comprimir. Prueba con una imagen más simple.');
+  }
+
   PADMIN.media = {
     fit,
     compress,
     upload,
+    logo,
     videoError,
     imageError,
     assertUpload,
@@ -151,6 +199,7 @@
     mediaIdOf,
     MAX_SIDE,
     MAX_FINAL,
-    MAX_SOURCE
+    MAX_SOURCE,
+    LOGO_MAX_URL
   };
 })(typeof window !== 'undefined' ? window : globalThis);

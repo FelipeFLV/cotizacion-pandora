@@ -41,11 +41,14 @@
     return (quote && quote.evidence && quote.evidence.mode) || 'service';
   }
 
+  const VIDEO_FILE = /\.(mp4|webm|mov)(?:[?#].*)?$/i;
+
   function thumbSrc(piece, signedMap) {
     const src = String((piece && piece.src) || '');
     const match = src.match(/^media:([A-Za-z0-9_-]{1,64})$/);
     if (match) return (signedMap && signedMap[match[1]]) || '';
-    if (/^assets\//.test(src)) return src;
+    // Las rutas heredadas viven en la raíz del sitio; el panel se sirve en /admin/.
+    if (/^assets\//.test(src)) return VIDEO_FILE.test(src) ? '' : `../${src}`;
     const youtube = youtubeThumb(src);
     if (youtube) return youtube;
     if (/^https:\/\//i.test(src)) return src;

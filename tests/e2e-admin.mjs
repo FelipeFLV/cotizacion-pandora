@@ -16,12 +16,18 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import net from 'node:net';
 import { launch, watch } from './helpers/browser.mjs';
+import { solidPng } from './helpers/png.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const EMAIL = process.env.ADMIN_TEST_EMAIL || '';
 const PUBLISH = process.env.E2E_ADMIN_PUBLISH === '1';
+
+// Logo de prueba: PNG 160×48 generado en memoria.
+function logoPng() {
+  return solidPng(160, 48, [70, 0, 187]);
+}
 
 if (!SITE || !SERVICE || !EMAIL) {
   console.log('E2E panel: omitido');
@@ -256,6 +262,68 @@ try {
   await frame.locator('h1').first().waitFor({ timeout: 15000 });
   assert.match((await frame.locator('h1').first().innerText()).trim(), /E2E Cliente/);
   assert.match((await frame.locator('body').innerText()).replace(/\s+/g, ' '), /Total S\/ 2,400\.00/, 'la vista previa muestra el total');
+  assert.equal(await frame.locator('[data-client-logo]').isHidden(), true, 'sin logo la vista previa muestra solo el nombre');
+  await page.locator('#preview-close').click();
+
+  /* ---------- logo del cliente (opcional) ---------- */
+  const logoField = page.locator('#sec-cliente .logo-field');
+  assert.equal(await logoField.count(), 1, 'la sección Cliente permite adjuntar el logo');
+  assert.match(await logoField.innerText(), /Sin logo/i, 'sin logo se avisa que se usa el nombre');
+
+  await page.locator('#sec-cliente [data-logo-input]').setInputFiles({
+    name: 'logo-e2e.png',
+    mimeType: 'image/png',
+    buffer: logoPng()
+  });
+  await page.waitForSelector('#sec-cliente .logo-preview', { timeout: 20000 });
+  const stored = await page.evaluate(async (id) => {
+    const read = async () => {
+      const rows = await PADMIN.api.listQuotes();
+      const row = rows.find((item) => item.id === id);
+      return row ? { logo: row.data.meta.clientLogo || '', hidden: Boolean(row.data.meta.hidden) } : null;
+    };
+    const deadline = Date.now() + 15000;
+    let value = await read();
+    while (Date.now() < deadline && value && !value.logo) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      value = await read();
+    }
+    return value;
+  }, client.id);
+  assert.match(stored.logo, /^data:image\//, 'el logo del cliente se guarda con la cotización');
+  assert.ok(stored.logo.length <= 220 * 1024, 'el logo se guarda comprimido');
+  assert.equal(stored.hidden, false, 'la cotización empieza visible');
+
+  await page.locator('button[data-panel="preview"]').first().click();
+  const logoFrame = page.frameLocator('#preview-frame');
+  await logoFrame.locator('[data-client-logo]').waitFor({ timeout: 15000 });
+  assert.equal(await logoFrame.locator('[data-client-logo]').isVisible(), true, 'la vista previa muestra el logo del cliente');
+  await page.locator('#preview-close').click();
+
+  /* ---------- ocultar y volver a mostrar ---------- */
+  const visibleToggle = page.locator('#publish-box input[data-op="pub-visible"]');
+  assert.equal(await visibleToggle.isChecked(), true, 'la casilla de visibilidad empieza marcada');
+
+  await visibleToggle.uncheck();
+  await page.locator('#publish-box .pub-status', { hasText: 'Oculta' }).waitFor({ timeout: 15000 });
+  const hidden = await page.evaluate(async (id) => {
+    const rows = await PADMIN.api.listQuotes();
+    const row = rows.find((item) => item.id === id);
+    return Boolean(row && row.data.meta.hidden);
+  }, client.id);
+  assert.equal(hidden, true, 'desmarcar guarda la cotización como oculta');
+
+  await page.locator('#publish-box input[data-op="pub-visible"]').check();
+  await page.waitForFunction(async (id) => {
+    const rows = await PADMIN.api.listQuotes();
+    const row = rows.find((item) => item.id === id);
+    return row && !row.data.meta.hidden;
+  }, client.id, { timeout: 15000 });
+  assert.equal(
+    await page.locator('#publish-box input[data-op="pub-visible"]').isChecked(),
+    true,
+    'volver a marcar deja la cotización visible'
+  );
 
   /* ---------- publicar (solo desde el origen autorizado) ---------- */
   if (PUBLISH) {
