@@ -108,7 +108,7 @@
   }
   .doc-meta { margin-bottom: 13mm; font-size: 9pt; }
   .for { font-size: 9.5pt; margin-bottom: 3mm; }
-  .client-logo { max-width: 55mm; max-height: 16mm; margin-bottom: 5mm; }
+  .client-logo { height: 17mm; width: auto; max-width: 120mm; object-fit: contain; margin-bottom: 4mm; }
   .client {
     font-size: 52pt;
     line-height: 1;

@@ -272,12 +272,13 @@ button { font: inherit; color: inherit; }
   text-wrap: balance;
 }
 
+/* El logo del cliente se mide con la misma escala que el nombre: casi tan
+   alto como el texto del titular, para que no quede diminuto junto a él. */
 .client-logo {
   display: block;
   width: auto;
-  height: auto;
-  max-width: 220px;
-  max-height: 68px;
+  height: clamp(44px, 6.3vw, 88px);
+  max-width: min(640px, 92%);
   object-fit: contain;
   margin: 0 0 18px;
 }

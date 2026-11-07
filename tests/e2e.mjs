@@ -441,18 +441,25 @@ try {
     const text = node ? node.querySelector('.brand-name') : null;
     const logo = document.querySelector('[data-client-logo]');
     const rect = logo ? logo.getBoundingClientRect() : null;
+    const client = document.getElementById('client-name');
     return {
       background: node ? getComputedStyle(node).backgroundImage : '',
       textDisplay: text ? getComputedStyle(text).display : 'missing',
       logoShown: logo ? !logo.hidden : false,
       logoWidth: rect ? Math.round(rect.width) : 0,
-      logoNatural: logo ? logo.naturalWidth : 0
+      logoHeight: rect ? Math.round(rect.height) : 0,
+      logoNatural: logo ? logo.naturalWidth : 0,
+      clientSize: client ? parseFloat(getComputedStyle(client).fontSize) : 0
     };
   });
   assert.match(brand.background, /logo-wordmark\.png/, 'el header usa el logotipo de la marca');
   assert.equal(brand.textDisplay, 'none', 'el header no escribe el nombre con otra tipografía');
   assert.equal(brand.logoShown, true, 'el logo del cliente se muestra cuando existe');
   assert.ok(brand.logoWidth > 0 && brand.logoNatural > 0, 'el logo del cliente carga en la página');
+  assert.ok(
+    brand.logoHeight >= brand.clientSize * 0.6,
+    `el logo se ve casi tan grande como el nombre (${brand.logoHeight}px vs ${brand.clientSize}px)`
+  );
 
   const stills = await page.evaluate(() => ({
     count: document.querySelectorAll('.still').length,
