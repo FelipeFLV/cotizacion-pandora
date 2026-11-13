@@ -91,7 +91,7 @@
     const date = meta.date && root.P && root.P.dateLabel ? root.P.dateLabel(meta.date) : meta.date;
     return `<div class="editor-head">
       <p class="admin-kicker">${kind === 'template' ? 'Plantilla' : 'Cotización'}</p>
-      <h2 data-editor-client>${PADMIN.library.esc(meta.client || 'Cliente sin nombre')}</h2>
+      <h2 data-editor-client>${PADMIN.library.esc(PADMIN.library.nameOf(row))}</h2>
       <p class="editor-sub">${PADMIN.library.esc([meta.quoteNo, date].filter(Boolean).join(' · '))}
         <span class="pill pill-${kind}">${PADMIN.library.LABELS[kind]}</span></p>
       ${url ? `<p class="editor-url"><a href="${PADMIN.library.esc(url)}" target="_blank" rel="noopener">${PADMIN.library.esc(url)}</a></p>` : ''}

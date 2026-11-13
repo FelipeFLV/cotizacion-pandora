@@ -93,10 +93,15 @@
     return parts.join('');
   }
 
+  function nameOf(row) {
+    const meta = (row && row.data && row.data.meta) || {};
+    const client = String(meta.client || '').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '').trim();
+    return client || String(meta.quoteNo || '').trim() || (row && row.name) || 'Cliente sin nombre';
+  }
+
   function rowHtml(row, activeId) {
     const kind = state(row);
-    const meta = (row.data && row.data.meta) || {};
-    const name = meta.client || row.name || 'Cliente sin nombre';
+    const name = nameOf(row);
     const services = servicesOf(row.data);
     const date = dateOf(row);
     const url = urlOf(row);
@@ -130,5 +135,5 @@
       data-filter="${filter.id}" type="button" aria-pressed="${filter.id === (current || 'all')}">${filter.label}</button>`).join('');
   }
 
-  PADMIN.library = { render, state, filters, servicesOf, urlOf, esc, FILTERS, LABELS };
+  PADMIN.library = { render, state, filters, servicesOf, urlOf, nameOf, esc, FILTERS, LABELS };
 })(typeof window !== 'undefined' ? window : globalThis);
