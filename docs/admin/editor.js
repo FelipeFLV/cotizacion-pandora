@@ -54,7 +54,7 @@
       <span class="field-label">Logo del cliente <em>opcional</em></span>
       <div class="logo-row">
         ${logo ? `<img class="logo-preview" src="${esc(logo)}" alt="Logo del cliente">` : ''}
-        <span class="logo-empty">${logo ? 'Se muestra sobre el nombre en la página y en el PDF.' : 'Sin logo: la página muestra solo el nombre en texto.'}</span>
+        <span class="logo-empty">${logo ? 'El nombre puede quedar vacío: la página y el PDF mostrarán solo el logo.' : 'Sin logo se necesita el nombre en texto.'}</span>
         <span class="logo-tools">
           <label class="mini logo-pick">${logo ? 'Cambiar logo' : 'Subir logo'}
             <input type="file" data-logo-input accept="image/png,image/jpeg,image/webp" hidden>
@@ -68,7 +68,7 @@
   function clientSection() {
     const meta = current.meta || {};
     return section('cliente', 'Cliente', `<div class="grid-2">
-      ${F.text({ path: 'meta.client', label: 'Cliente', value: meta.client })}
+      ${F.text({ path: 'meta.client', label: 'Cliente', value: String(meta.client || '').replace(/\u200B/g, ''), hint: 'Opcional si subes el logo del cliente.' })}
       ${F.text({ path: 'meta.quoteNo', label: 'N.º de cotización', value: meta.quoteNo })}
       ${F.date({ path: 'meta.date', label: 'Fecha', value: meta.date })}
       ${F.text({ path: 'meta.duration', label: 'Duración', value: meta.duration })}

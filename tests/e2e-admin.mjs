@@ -270,6 +270,16 @@ try {
   assert.equal(await logoField.count(), 1, 'la sección Cliente permite adjuntar el logo');
   assert.match(await logoField.innerText(), /Sin logo/i, 'sin logo se avisa que se usa el nombre');
 
+  await page.locator('#f-meta-client').fill('');
+  await page.evaluate(() => PADMIN.editor.repaint());
+  assert.equal(
+    await page.locator('#publish-box [data-op="pub-publish"]').isDisabled(),
+    true,
+    'sin nombre ni logo no se puede publicar'
+  );
+  await page.locator('#f-meta-client').fill('E2E Cliente');
+  await page.evaluate(() => PADMIN.editor.repaint());
+
   await page.locator('#sec-cliente [data-logo-input]').setInputFiles({
     name: 'logo-e2e.png',
     mimeType: 'image/png',
@@ -299,6 +309,28 @@ try {
   await logoFrame.locator('[data-client-logo]').waitFor({ timeout: 15000 });
   assert.equal(await logoFrame.locator('[data-client-logo]').isVisible(), true, 'la vista previa muestra el logo del cliente');
   await page.locator('#preview-close').click();
+
+  /* ---------- nombre opcional cuando hay logo ---------- */
+  await page.locator('#f-meta-client').fill('');
+  await page.evaluate(() => PADMIN.editor.repaint());
+  await page.waitForFunction(() => {
+    const button = document.querySelector('#publish-box [data-op="pub-publish"]');
+    return button && !button.disabled;
+  });
+  assert.match(
+    await page.locator('#publish-box .field-hint').innerText(),
+    /logo/i,
+    'la pista explica que se publica solo con el logo'
+  );
+  await page.waitForFunction(async (id) => {
+    const rows = await PADMIN.api.listQuotes();
+    const row = rows.find((item) => item.id === id);
+    return Boolean(
+      row
+      && !String(row.data.meta.client || '').replace(/\u200B/g, '').trim()
+      && row.data.meta.clientLogo
+    );
+  }, client.id, { timeout: 15000 });
 
   /* ---------- ocultar y volver a mostrar ---------- */
   const visibleToggle = page.locator('#publish-box input[data-op="pub-visible"]');

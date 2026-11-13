@@ -435,6 +435,15 @@
     };
   }
 
+  // El nombre puede venir vacío o con un marcador invisible (el panel usa uno
+  // para poder publicar solo con el logo). Aquí se normaliza a texto visible.
+  const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+  function clientName(quote) {
+    const meta = (quote && quote.meta) || {};
+    return String(meta.client || '').replace(INVISIBLE, '').trim();
+  }
+
   function clientLogoNode() {
     let node = document.querySelector('[data-client-logo]');
     if (node) return node;
@@ -456,13 +465,26 @@
     if (!node) return;
     if (logo) {
       if (node.getAttribute('src') !== logo) node.src = logo;
-      node.alt = `Logo de ${meta.client || 'el cliente'}`;
+      node.alt = clientName(quote) ? `Logo de ${clientName(quote)}` : 'Logo del cliente';
       node.hidden = false;
     } else {
       node.removeAttribute('src');
       node.alt = '';
       node.hidden = true;
     }
+  }
+
+  // Sin nombre no se reserva una línea vacía: el titular es solo el logo.
+  // En el editor interno el titular lleva un campo editable y no se toca.
+  function syncClientName(quote) {
+    const node = document.getElementById('client-name');
+    if (!node || node.querySelector('[data-text]')) return;
+    const name = clientName(quote);
+    node.textContent = name;
+    node.hidden = !name;
+    document.querySelectorAll('.for').forEach((el) => {
+      el.hidden = !name;
+    });
   }
 
   function sync(quote) {
@@ -481,6 +503,8 @@
       const value = P.get(quote, el.dataset.field);
       if (value !== undefined && value !== null) el.textContent = value;
     });
+
+    syncClientName(quote);
 
     document.querySelectorAll('[data-summary]').forEach((el) => {
       const value = values['summary.' + el.dataset.summary];
@@ -548,6 +572,7 @@
   P.render = {
     all: renderAll,
     sync,
+    clientName,
     prices: renderPrices,
     split: renderSplit,
     bank: renderBank,

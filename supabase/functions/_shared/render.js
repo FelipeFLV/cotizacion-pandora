@@ -3,7 +3,12 @@
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const MEDIA_RE = /^media:([A-Za-z0-9_-]{1,64})$/;
+const INVISIBLE_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+export function visibleClientName(quote) {
+  return String((quote && quote.meta && quote.meta.client) || '').replace(INVISIBLE_RE, '').trim();
+}
 
 export function dateLabel(iso) {
   if (!iso) return '';
@@ -39,7 +44,7 @@ export function buildClientHtml({ template, pkg, base }) {
   const quote = pkg.quote;
   const date = quote.meta.date || '';
   return fillTokens(template, {
-    TITLE: escapeHtml(`Propuesta · ${quote.meta.client || 'Pandora Marketing'}`),
+    TITLE: escapeHtml(`Propuesta · ${visibleClientName(quote) || String(quote.meta.quoteNo || '').trim() || 'Pandora Marketing'}`),
     DESCRIPTION: escapeHtml('Propuesta de Pandora Marketing: alcance, evidencia e inversión.'),
     QUOTE_ID: escapeHtml(quote.id || pkg.slug),
     GENERATED_AT: escapeHtml(pkg.generatedAt || ''),
@@ -67,7 +72,9 @@ export function validatePackage(pkg) {
   if (!quote || typeof quote !== 'object') {
     errors.push('Falta la cotización.');
   } else {
-    if (!quote.meta || !String(quote.meta.client || '').trim()) errors.push('La cotización no tiene cliente.');
+    const name = visibleClientName(quote);
+    const logo = String((quote.meta && quote.meta.clientLogo) || '').trim();
+    if (!name && !logo) errors.push('La cotización no tiene cliente ni logo.');
     if (!Array.isArray(quote.blocks) || !quote.blocks.length) errors.push('La cotización no tiene servicios.');
     if (!quote.id) errors.push('La cotización no tiene identificador.');
   }

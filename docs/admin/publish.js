@@ -21,6 +21,11 @@
   const SHOWING = 'Mostrando…';
   const HIDDEN_NOTE = 'Oculta. El cliente verá «Propuesta en preparación» en la misma URL.';
   const VISIBLE_NOTE = 'Visible. La página vuelve a mostrar la propuesta.';
+  // El servicio de publicación exige un cliente no vacío. Cuando la cotización
+  // se publica solo con logo se guarda este marcador invisible y se restaura
+  // el nombre vacío en cuanto termina la llamada.
+  const PLACEHOLDER = '\u200B';
+  const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
 
   let row = null;
   let busy = '';
@@ -65,10 +70,24 @@
     return item.published_url || meta.publishedUrl || '';
   }
 
+  function nameOf(meta) {
+    return String((meta && meta.client) || '').replace(INVISIBLE, '').trim();
+  }
+
+  function logoOf(meta) {
+    return String((meta && meta.clientLogo) || '').trim();
+  }
+
   function clientOf(value) {
     const item = value || {};
     const meta = (item.data && item.data.meta) || {};
-    return String(meta.client || '').trim();
+    return nameOf(meta);
+  }
+
+  function clientLogoOf(value) {
+    const item = value || {};
+    const meta = (item.data && item.data.meta) || {};
+    return logoOf(meta);
   }
 
   function repaint() {
@@ -128,11 +147,12 @@
     }
   }
 
-  function hintOf(kind, name) {
+  function hintOf(kind, name, logo) {
     if (kind === 'template') return 'La plantilla no se publica: crea un cliente a partir de ella.';
     if (kind === 'hidden') return 'La página está oculta: el cliente ve una propuesta en preparación.';
-    if (!name) return 'Escribe el nombre del cliente antes de publicar.';
-    return 'Publicar crea la página del cliente con el contenido guardado.';
+    if (name) return 'Publicar crea la página del cliente con el contenido guardado.';
+    if (logo) return 'Se publicará con el logo del cliente, sin nombre escrito.';
+    return 'Escribe el nombre del cliente o sube su logo antes de publicar.';
   }
 
   function render(input) {
@@ -141,9 +161,11 @@
     const quoteData = data.quote || item.data || {};
     const kind = stateOf(item);
     const url = urlOf(item);
-    const name = String((quoteData.meta && quoteData.meta.client) || '').trim() || clientOf(item);
+    const meta = quoteData.meta || {};
+    const name = nameOf(meta) || clientOf(item);
+    const hasLogo = Boolean(logoOf(meta) || clientLogoOf(item));
     const isBusy = Boolean(busy);
-    const canPublish = kind !== 'template' && Boolean(name) && !isBusy;
+    const canPublish = kind !== 'template' && (Boolean(name) || hasLogo) && !isBusy;
     const publishLabel = kind === 'published' ? 'Republicar' : (kind === 'retired' ? 'Publicar de nuevo' : 'Publicar');
     const progressLabel = busy === 'retire' ? RETIRING : (busy === 'restore' ? 'Restaurando…' : PUBLISHING);
     const visible = !(quoteData.meta && quoteData.meta.hidden);
@@ -172,17 +194,24 @@
         <button class="mini" data-op="pub-history" type="button"${isBusy ? ' disabled' : ''}>${versions ? 'Ocultar historial' : 'Historial'}</button>
       </div>
       ${message}
-      <p class="field-hint">${esc(hintOf(kind, name))}</p>
+      <p class="field-hint">${esc(hintOf(kind, name, hasLogo))}</p>
       ${historyBox}
     </div>`;
   }
 
-  function currentName() {
+  function currentMeta() {
     const live = PADMIN.editor && typeof PADMIN.editor.currentQuote === 'function'
       ? PADMIN.editor.currentQuote()
       : null;
-    const meta = (live && live.meta) || {};
-    return String(meta.client || '').trim() || clientOf(row);
+    return (live && live.meta) || (row && row.data && row.data.meta) || {};
+  }
+
+  function currentName() {
+    return nameOf(currentMeta()) || clientOf(row);
+  }
+
+  function currentLogo() {
+    return logoOf(currentMeta()) || clientLogoOf(row);
   }
 
   async function publish(options) {
@@ -196,8 +225,8 @@
       repaint();
       return;
     }
-    if (!currentName()) {
-      error = 'Escribe el nombre del cliente antes de publicar.';
+    if (!currentName() && !currentLogo()) {
+      error = 'Escribe el nombre del cliente o sube su logo antes de publicar.';
       note = '';
       repaint();
       return;
@@ -212,8 +241,14 @@
     error = '';
     repaint();
 
+    const placeholder = !currentName();
+    let result = null;
     try {
-      const result = await quote(row.id);
+      if (placeholder) {
+        PADMIN.editor.setMeta('client', PLACEHOLDER);
+        await PADMIN.editor.flush();
+      }
+      result = await quote(row.id);
       row = Object.assign({}, row, {
         status: 'published',
         slug: result.slug || row.slug,
@@ -222,13 +257,24 @@
         retired_at: null
       });
       note = PUBLISHED;
-      if (hooks.onPublished) await hooks.onPublished(row.id, result.url);
     } catch (failure) {
       error = failure && failure.message ? failure.message : 'No se pudo publicar.';
       note = '';
     } finally {
+      if (placeholder) await restoreName('');
       busy = '';
       repaint();
+    }
+
+    if (result && hooks.onPublished) await hooks.onPublished(row.id, result.url);
+  }
+
+  async function restoreName(value) {
+    try {
+      PADMIN.editor.setMeta('client', value);
+      await PADMIN.editor.flush();
+    } catch (failure) {
+      // La página ya está publicada y el marcador invisible se ve como vacío.
     }
   }
 

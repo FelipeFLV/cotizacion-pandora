@@ -25,6 +25,7 @@
       evidenceMode: mode(),
       general: state.general
     });
+    document.title = titleOf(state.quote);
 
     const generated = state.meta && state.meta.generatedAt;
     const label = $('[data-generated-label]');
@@ -153,10 +154,17 @@
     });
   }
 
+  function titleOf(quote) {
+    const meta = (quote && quote.meta) || {};
+    const name = P.render.clientName(quote);
+    if (name) return `Propuesta · ${name}`;
+    return `Propuesta · ${String(meta.quoteNo || '').trim() || 'Pandora Marketing'}`;
+  }
+
   function paused(quote) {
     const meta = (quote && quote.meta) || {};
     const base = P.assetBase || '';
-    const name = String(meta.client || '').trim();
+    const name = P.render.clientName(quote);
     const logo = P.render.esc(P.assetUrl('assets/logo-wordmark.png', base));
     document.body.classList.add('is-paused');
 

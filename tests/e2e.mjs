@@ -73,6 +73,17 @@ function writeHiddenPage() {
   writeFileSync(path.join(dir, 'index.html'), buildClientHtml({ template, pkg, base }));
 }
 
+function writeLogoOnlyPage() {
+  const template = readFileSync(path.join(root, 'tools/cliente.template.html'), 'utf8');
+  const pkg = clientPackage('general');
+  pkg.slug = '_e2e-logo-only';
+  pkg.quote.meta.client = '';
+  pkg.quote.meta.clientLogo = LOGO_DATA;
+  const dir = path.join(root, 'docs/c/_e2e-logo-only');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'index.html'), buildClientHtml({ template, pkg, base }));
+}
+
 async function waitForServer(url) {
   for (let i = 0; i < 60; i += 1) {
     try {
@@ -422,6 +433,7 @@ try {
   /* ---------- versión cliente ---------- */
   MODES.forEach(writeClientPage);
   writeHiddenPage();
+  writeLogoOnlyPage();
   await waitForServer(`${serverUrl}/c/_e2e-service/`);
 
   const clientContext = await browser.newContext();
@@ -506,6 +518,22 @@ try {
   );
   assert.equal(await page.locator('[data-action="print"]').isVisible(), false, 'no se puede exportar una página oculta');
   assert.equal(await page.evaluate(() => document.body.classList.contains('is-paused')), true);
+
+  /* ---------- solo logo, sin nombre ---------- */
+  await page.goto(`${serverUrl}/c/_e2e-logo-only/`);
+  await page.waitForSelector('body.ready');
+  const logoOnly = await page.evaluate(() => ({
+    nameHidden: document.getElementById('client-name').hidden,
+    nameText: document.getElementById('client-name').textContent.trim(),
+    forHidden: document.querySelector('.for').hidden,
+    logoShown: !document.querySelector('[data-client-logo]').hidden,
+    title: document.title
+  }));
+  assert.equal(logoOnly.nameHidden, true, 'sin nombre no queda un titular vacío');
+  assert.equal(logoOnly.nameText, '', 'el nombre no se escribe cuando no existe');
+  assert.equal(logoOnly.forHidden, true, 'sin nombre no se anuncia “Propuesta preparada para”');
+  assert.equal(logoOnly.logoShown, true, 'el logo del cliente ocupa el lugar del nombre');
+  assert.match(logoOnly.title, /OCT26-23/, 'el título usa el número de cotización cuando no hay nombre');
 
   await page.goto(`${serverUrl}/c/_e2e-general/`);
   await page.waitForSelector('body.ready');
@@ -656,5 +684,6 @@ try {
   await browser.close();
   server.kill();
   MODES.forEach((mode) => rmSync(path.join(root, 'docs/c', `_e2e-${mode}`), { recursive: true, force: true }));
+  rmSync(path.join(root, 'docs/c/_e2e-logo-only'), { recursive: true, force: true });
   rmSync(path.join(root, 'tests/tmp'), { recursive: true, force: true });
 }

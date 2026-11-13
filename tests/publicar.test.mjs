@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  buildClientHtml,
   pageUrl,
   prepareClient,
   readSiteBase,
@@ -58,6 +59,28 @@ test('validates the package shape', () => {
   assert.match(validatePackage({ ...pkg, quote: { ...pkg.quote, blocks: [] } }).join(' '), /servicio/i);
   assert.match(validatePackage({ ...pkg, slug: 'Demo!' }).join(' '), /slug/i);
   assert.match(validatePackage({ ...pkg, generatedAt: 'ayer' }).join(' '), /fecha/i);
+});
+
+test('a client logo replaces the required name', () => {
+  const pkg = loadPackage('cliente.json');
+  const withLogo = {
+    ...pkg,
+    quote: {
+      ...pkg.quote,
+      meta: { ...pkg.quote.meta, client: '', clientLogo: 'data:image/png;base64,AAAA' }
+    }
+  };
+  assert.deepEqual(validatePackage(withLogo), []);
+
+  const html = buildClientHtml({
+    template: readFileSync(templatePath, 'utf8'),
+    pkg: withLogo,
+    base: '../../'
+  });
+  assert.match(html, /<title>Propuesta · OCT26-23<\/title>/, 'sin nombre el título usa el número de cotización');
+
+  const blank = { ...pkg, quote: { ...pkg.quote, meta: { ...pkg.quote.meta, client: ' \u200B ' } } };
+  assert.match(validatePackage(blank).join(' '), /logo/i, 'sin nombre ni logo no se puede publicar');
 });
 
 test('resolves and rejects slugs', () => {
