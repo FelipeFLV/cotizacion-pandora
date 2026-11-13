@@ -357,6 +357,57 @@ try {
     'volver a marcar deja la cotización visible'
   );
 
+  /* ---------- fecha automática, editable y de nuevo automática ---------- */
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const dateInput = page.locator('#f-meta-date');
+  assert.equal(await dateInput.inputValue(), today, 'la cotización nueva nace con la fecha real');
+  assert.match(await page.locator('[data-date-note]').innerText(), /Automática/, 'la pista avisa que la fecha es automática');
+
+  await dateInput.fill('2020-01-01');
+  await page.waitForFunction(async (id) => {
+    const rows = await PADMIN.api.listQuotes();
+    const row = rows.find((item) => item.id === id);
+    return Boolean(row && row.data.meta.date === '2020-01-01' && row.data.meta.dateAuto === false);
+  }, client.id, { timeout: 15000 });
+  assert.match(await page.locator('[data-date-note]').innerText(), /Manual/, 'escribir la fecha la vuelve manual');
+
+  await page.locator('#sec-cliente [data-op="date-today"]').click();
+  await page.waitForFunction(async ([id, iso]) => {
+    const rows = await PADMIN.api.listQuotes();
+    const row = rows.find((item) => item.id === id);
+    return Boolean(row && row.data.meta.date === iso && row.data.meta.dateAuto === true);
+  }, [client.id, today], { timeout: 15000 });
+  assert.equal(await dateInput.inputValue(), today, '«Hoy» devuelve la fecha real');
+  assert.match(await page.locator('[data-date-note]').innerText(), /Automática/, '«Hoy» vuelve a la fecha automática');
+
+  /* ---------- eliminar una cotización ---------- */
+  const disposable = await page.evaluate(async (id) => {
+    const copy = await PADMIN.api.duplicateQuote(id);
+    return copy.id;
+  }, client.id);
+  created.push(disposable);
+
+  await page.reload();
+  await page.waitForSelector('#quote-list');
+  const templateCard = page.locator(`#quote-list article[data-id="${seeded.id}"]`);
+  assert.equal(
+    await templateCard.locator('[data-action="delete"]').count(),
+    0,
+    'la plantilla no ofrece eliminarse'
+  );
+
+  const card = page.locator(`#quote-list article[data-id="${disposable}"]`);
+  await card.waitFor({ timeout: 15000 });
+  page.once('dialog', (dialog) => dialog.accept());
+  await card.locator('[data-action="delete"]').click();
+  await page.waitForFunction(async (id) => {
+    const rows = await PADMIN.api.listQuotes();
+    return !rows.some((row) => row.id === id);
+  }, disposable, { timeout: 15000 });
+  await card.waitFor({ state: 'detached', timeout: 15000 });
+  assert.equal(await page.locator(`#quote-list article[data-id="${disposable}"]`).count(), 0, 'la cotización eliminada sale de la biblioteca');
+
   /* ---------- publicar (solo desde el origen autorizado) ---------- */
   if (PUBLISH) {
     console.log('E2E panel: publicar se verifica aparte, el panel local no está en ALLOWED_ORIGIN');

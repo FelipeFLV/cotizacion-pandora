@@ -90,6 +90,7 @@
       parts.push(`<button class="mini" data-action="set-template" data-id="${id}">Usar como plantilla</button>`);
     }
     parts.push(`<button class="mini mini-quiet" data-action="archive" data-id="${id}">Archivar</button>`);
+    parts.push(`<button class="mini mini-danger" data-action="delete" data-id="${id}">Eliminar</button>`);
     return parts.join('');
   }
 

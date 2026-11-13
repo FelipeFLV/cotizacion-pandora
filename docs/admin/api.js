@@ -79,6 +79,13 @@
       );
     },
 
+    async deleteQuote(id) {
+      return one(
+        ready().from('quotes').delete().eq('id', id).select(),
+        'No se pudo eliminar la cotización.'
+      );
+    },
+
     async archiveQuote(id) {
       return one(
         ready().from('quotes').update({ archived_at: new Date().toISOString() }).eq('id', id).select().single(),
@@ -132,7 +139,9 @@
         publishedAt: '',
         retiredAt: '',
         retireRequestedAt: '',
-        isDraft: false
+        isDraft: false,
+        date: PADMIN.model.todayISO(),
+        dateAuto: true
       });
       const copy = Object.assign({
         owner_id: owner,

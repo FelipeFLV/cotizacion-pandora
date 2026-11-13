@@ -112,6 +112,7 @@ test('a new client clears identity but keeps content', () => {
   assert.equal(client.evidence.mode, 'service');
   assert.equal(client.meta.publishedUrl, '');
   assert.equal(client.meta.date, P.todayISO());
+  assert.equal(client.meta.dateAuto, true, 'la fecha nueva nace automática');
   assert.equal(client.meta.conditions.length, 1);
 });
 

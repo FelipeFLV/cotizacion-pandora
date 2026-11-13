@@ -35,10 +35,11 @@ test('row state', () => {
   assert.equal(state({ status: 'draft', pending: true }), 'pending');
 });
 
-test('a template has no publish or archive actions', () => {
+test('a template has no publish, archive or delete actions', () => {
   const html = render({ quotes: [{ id: 'q1', is_template: true, data: quote(), status: 'draft' }], activeId: 'q1' });
   assert.doesNotMatch(html, /data-action="publish"/);
   assert.doesNotMatch(html, /data-action="archive"/);
+  assert.doesNotMatch(html, /data-action="delete"/);
   assert.match(html, /data-action="new-client"/);
 });
 
@@ -46,6 +47,7 @@ test('a published quote shows its url and actions', () => {
   const html = render({ quotes: [{ id: 'q1', is_template: false, data: quote(), status: 'published', slug: 'h-s-7k2m' }], activeId: 'q1' });
   assert.match(html, /data-action="publish"/);
   assert.match(html, /data-action="archive"/);
+  assert.match(html, /data-action="delete"/);
   assert.match(html, /https:\/\/example\.test\/c\/h-s\//);
   assert.match(html, /Meta Ads/);
 });

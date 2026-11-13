@@ -65,12 +65,48 @@
     </div>`;
   }
 
+  function dateAuto() {
+    const meta = (current && current.meta) || {};
+    return meta.dateAuto !== false;
+  }
+
+  function dateHint() {
+    return dateAuto()
+      ? 'Automática: se actualiza a la fecha real al publicar.'
+      : 'Manual: se mantiene al publicar. «Hoy» vuelve a automática.';
+  }
+
+  function dateField() {
+    const meta = current.meta || {};
+    return `<label class="field" for="f-meta-date">
+      <span>Fecha</span>
+      <span class="date-row">
+        <input id="f-meta-date" data-field="meta.date" type="date" value="${esc(meta.date)}">
+        <button class="mini" data-op="date-today" type="button">Hoy</button>
+      </span>
+      <small class="field-hint" data-date-note data-auto="${dateAuto() ? 'yes' : 'no'}">${esc(dateHint())}</small>
+    </label>`;
+  }
+
+  // Mantiene el campo y la pista al día sin volver a pintar toda la sección
+  // (repintar quitaría el foco mientras se escribe).
+  function syncDateNote() {
+    if (!host || !current) return;
+    const meta = current.meta || {};
+    const input = host.querySelector('[data-field="meta.date"]');
+    if (input && meta.date && root.document.activeElement !== input) input.value = meta.date;
+    const note = host.querySelector('[data-date-note]');
+    if (!note) return;
+    note.textContent = dateHint();
+    note.dataset.auto = dateAuto() ? 'yes' : 'no';
+  }
+
   function clientSection() {
     const meta = current.meta || {};
     return section('cliente', 'Cliente', `<div class="grid-2">
       ${F.text({ path: 'meta.client', label: 'Cliente', value: String(meta.client || '').replace(/\u200B/g, ''), hint: 'Opcional si subes el logo del cliente.' })}
       ${F.text({ path: 'meta.quoteNo', label: 'N.º de cotización', value: meta.quoteNo })}
-      ${F.date({ path: 'meta.date', label: 'Fecha', value: meta.date })}
+      ${dateField()}
       ${F.text({ path: 'meta.duration', label: 'Duración', value: meta.duration })}
       ${F.text({ path: 'meta.validity', label: 'Vigencia', value: meta.validity })}
       ${F.text({ path: 'meta.taxRate', label: 'IGV (%)', value: meta.taxRate, type: 'number' })}
@@ -225,6 +261,7 @@
     if (!current) return null;
     current.meta = current.meta || {};
     current.meta[key] = value;
+    if (key === 'date' || key === 'dateAuto') syncDateNote();
     if (onChange) onChange(current);
     scheduleSave();
     return current;
@@ -286,6 +323,12 @@
     const field = event.target.closest('[data-field]');
     if (!field) return;
     current = M.setPath(current, field.dataset.field, coerce(field.dataset.field, field));
+    // La fecha escrita a mano deja de ser automática: se respeta al publicar.
+    if (field.dataset.field === 'meta.date' && field.value) {
+      current.meta = current.meta || {};
+      current.meta.dateAuto = false;
+      syncDateNote();
+    }
     updateComputed();
     if (onChange) onChange(current);
     scheduleSave();
@@ -417,6 +460,15 @@
       return;
     }
     if (op === 'logo-clear') return clearLogo();
+    if (op === 'date-today') {
+      current.meta = current.meta || {};
+      current.meta.date = PADMIN.model.todayISO();
+      current.meta.dateAuto = true;
+      syncDateNote();
+      if (onChange) onChange(current);
+      scheduleSave();
+      return;
+    }
     const index = Number(node.dataset.index);
     let next = current;
     if (op === 'block-add') next = M.addBlock(current);

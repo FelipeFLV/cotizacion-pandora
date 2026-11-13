@@ -260,6 +260,35 @@
       await load();
       return toast('Plantilla actualizada.');
     }
+    if (action === 'delete') {
+      const kind = PADMIN.library.state(row);
+      const url = PADMIN.library.urlOf(row);
+      const name = PADMIN.library.nameOf(row);
+      const removePage = (kind === 'published' || kind === 'hidden') && Boolean(url);
+      const warning = removePage
+        ? `¿Eliminar «${name}»? Se retirará su página (${url}) y la cotización desaparecerá del panel. Esta acción no se puede deshacer.`
+        : `¿Eliminar «${name}»? Esta acción no se puede deshacer.`;
+      if (!root.confirm(warning)) return;
+      if (removePage) {
+        try {
+          await PADMIN.publish.retire(id);
+        } catch (failure) {
+          return toast(`No se eliminó: la página no se pudo retirar (${failure.message}).`, 'error');
+        }
+      }
+      try {
+        await PADMIN.api.deleteQuote(id);
+      } catch (failure) {
+        return toast(`No se pudo eliminar la cotización (${failure.message}).`, 'error');
+      }
+      if (state.activeId === id) {
+        state.activeId = '';
+        state.editing = null;
+        root.localStorage.removeItem(STORE_KEY);
+      }
+      await load();
+      return toast('Cotización eliminada.');
+    }
     if (action === 'archive') {
       const name = (row.data && row.data.meta && row.data.meta.client) || 'esta cotización';
       if (!root.confirm(`¿Archivar ${name}? Podrás recuperarla después.`)) return;

@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const P = require('../docs/app/core.js');
 
 const NAMES = [
-  'init', 'listQuotes', 'getQuote', 'createQuote', 'saveQuote', 'archiveQuote', 'unarchiveQuote',
+  'init', 'listQuotes', 'getQuote', 'createQuote', 'saveQuote', 'deleteQuote', 'archiveQuote', 'unarchiveQuote',
   'setTemplate', 'duplicateQuote', 'newClientFrom', 'listVersions', 'createVersion',
   'restoreVersion', 'getMedia', 'signedUrl', 'uploadMedia', 'listBankItems', 'addBankItem',
   'removeBankItem', 'listJobs', 'accessToken'
@@ -43,4 +43,30 @@ test('the data layer never sends owner_id on updates', () => {
   assert.ok(updates.length > 0);
   for (const call of updates) assert.doesNotMatch(call, /owner_id/);
   assert.match(source, /owner_id:\s*owner/);
+});
+
+test('duplicating a quote starts a fresh automatic date', async () => {
+  const inserted = [];
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+    from() {
+      return {
+        insert(row) {
+          inserted.push(row);
+          return {
+            select() {
+              return { single: async () => ({ data: Object.assign({ id: 'copia' }, row), error: null }) };
+            }
+          };
+        }
+      };
+    }
+  };
+  PADMIN.api.init(client);
+  const row = await PADMIN.api.duplicateRow({
+    data: { meta: { client: 'Cliente', date: '2020-01-01', dateAuto: false }, blocks: [] }
+  });
+  assert.equal(inserted.length, 1);
+  assert.equal(row.data.meta.date, P.todayISO(), 'la copia usa la fecha real');
+  assert.equal(row.data.meta.dateAuto, true, 'la copia vuelve a ser automática');
 });

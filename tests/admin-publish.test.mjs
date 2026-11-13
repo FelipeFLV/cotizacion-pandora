@@ -133,3 +133,53 @@ test('the panel loads publish and history before the app boots', () => {
   assert.match(editor, /PADMIN\.publish\.render\(/);
   assert.match(editor, /PADMIN\.publish\.op\(/);
 });
+
+function stubPublish(window, meta) {
+  const PADMIN = window.PADMIN;
+  PADMIN.editor = {
+    currentQuote: () => ({ meta }),
+    setMeta(key, value) { meta[key] = value; },
+    flush: async () => {}
+  };
+  PADMIN.api = { accessToken: async () => 'token' };
+  window.fetch = async () => ({
+    ok: true,
+    json: async () => ({ url: URL_SITE, slug: 'cliente-01-9k4d' })
+  });
+  return PADMIN;
+}
+
+test('publishing refreshes an automatic date to today', async () => {
+  const { window } = load();
+  const meta = { client: 'Cliente 01', date: '2020-01-01', dateAuto: true };
+  const PADMIN = stubPublish(window, meta);
+  PADMIN.publish.setRow(row({ data: { meta } }));
+
+  await PADMIN.publish.op('pub-publish');
+
+  assert.equal(meta.date, P.todayISO(), 'la fecha automática pasa a la fecha real');
+  assert.equal(meta.dateAuto, true);
+});
+
+test('publishing keeps a date written by hand', async () => {
+  const { window } = load();
+  const meta = { client: 'Cliente 01', date: '2020-01-01', dateAuto: false };
+  const PADMIN = stubPublish(window, meta);
+  PADMIN.publish.setRow(row({ data: { meta } }));
+
+  await PADMIN.publish.op('pub-publish');
+
+  assert.equal(meta.date, '2020-01-01', 'la fecha manual se respeta al publicar');
+  assert.equal(meta.dateAuto, false);
+});
+
+test('publishing fills an empty date even when it is marked manual', async () => {
+  const { window } = load();
+  const meta = { client: 'Cliente 01', date: '', dateAuto: false };
+  const PADMIN = stubPublish(window, meta);
+  PADMIN.publish.setRow(row({ data: { meta } }));
+
+  await PADMIN.publish.op('pub-publish');
+
+  assert.equal(meta.date, P.todayISO(), 'sin fecha se usa la fecha real');
+});

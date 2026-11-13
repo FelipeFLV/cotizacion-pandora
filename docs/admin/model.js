@@ -130,6 +130,7 @@
     quote.meta.hidden = false;
     quote.meta.isDraft = false;
     quote.meta.date = todayISO();
+    quote.meta.dateAuto = true;
     quote.evidence = quote.evidence && quote.evidence.mode
       ? quote.evidence
       : { mode: 'service', generalIds: { videos: [], images: [] } };
@@ -206,5 +207,5 @@
     };
   }
 
-  PADMIN.model = { fromBackup, toBackup, newClientData, rowToQuote, quoteToPatch, versionSummary, uuid };
+  PADMIN.model = { fromBackup, toBackup, newClientData, rowToQuote, quoteToPatch, versionSummary, uuid, todayISO };
 })(typeof window !== 'undefined' ? window : globalThis);

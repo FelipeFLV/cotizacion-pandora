@@ -210,6 +210,25 @@
     return logoOf(currentMeta()) || clientLogoOf(row);
   }
 
+  function todayISO() {
+    return root.P && typeof root.P.todayISO === 'function'
+      ? root.P.todayISO()
+      : new Date().toISOString().slice(0, 10);
+  }
+
+  // La fecha es automática salvo que alguien la haya escrito a mano. Se
+  // refresca antes de publicar (y al republicar) para que refleje el día real.
+  async function refreshDate() {
+    const meta = currentMeta();
+    if (meta.dateAuto === false && meta.date) return false;
+    const today = todayISO();
+    if (meta.date === today) return false;
+    PADMIN.editor.setMeta('date', today);
+    PADMIN.editor.setMeta('dateAuto', true);
+    await PADMIN.editor.flush();
+    return true;
+  }
+
   async function publish(options) {
     const opts = options || {};
     if (!row || stateOf(row) === 'template') return;
@@ -229,6 +248,17 @@
     }
     if (!opts.quiet && stateOf(row) === 'published' && !root.confirm('Esta cotización ya está publicada. Se reemplazará el contenido y se mantendrá la misma URL. ¿Publicar?')) {
       return;
+    }
+
+    if (!opts.quiet) {
+      try {
+        await refreshDate();
+      } catch (failure) {
+        error = 'No se pudo guardar la fecha de hoy. Inténtalo de nuevo.';
+        note = '';
+        repaint();
+        return;
+      }
     }
 
     last = 'publish';
