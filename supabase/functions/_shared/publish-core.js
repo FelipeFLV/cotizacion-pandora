@@ -16,17 +16,23 @@ export function base64(bytes) {
   return btoa(binary);
 }
 
-export async function generalEvidence(supabase, quote, ownerId) {
+export async function generalEvidence(supabase, quote, ownerId, allowedOwners) {
   const ids = (quote.evidence && quote.evidence.generalIds) || { videos: [], images: [] };
   const videos = ids.videos || [];
   const images = ids.images || [];
   if (!videos.length && !images.length) return { videos: [], images: [] };
 
-  const { data, error } = await supabase
+  const owners = Array.isArray(allowedOwners) && allowedOwners.length ? allowedOwners : [ownerId];
+  let query = supabase
     .from('bank_items')
     .select('*')
-    .in('id', videos.concat(images))
-    .eq('owner_id', ownerId);
+    .in('id', videos.concat(images));
+  if (owners.length === 1) {
+    query = query.eq('owner_id', owners[0]);
+  } else {
+    query = query.in('owner_id', owners);
+  }
+  const { data, error } = await query;
   if (error) throw new HttpError(500, 'No se pudo leer el banco de evidencias.');
 
   const byId = new Map((data || []).map((item) => [item.id, item]));
@@ -69,7 +75,9 @@ export async function publishQuote(options) {
   const { data: row, error: rowError } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
   if (rowError && rowError.code !== 'PGRST116') throw new HttpError(500, 'No se pudo leer la cotización.');
   if (!row) throw new HttpError(404, 'No existe la cotización.');
-  if (row.owner_id !== user.id) throw new HttpError(403, 'Esa cotización no te pertenece.');
+  const allowedOwners = opts.allowedOwners;
+  const isOwner = row.owner_id === user.id || (Array.isArray(allowedOwners) && allowedOwners.includes(row.owner_id));
+  if (!isOwner) throw new HttpError(403, 'Esa cotización no te pertenece.');
   if (row.is_template) throw new HttpError(400, 'Una plantilla no se puede publicar: crea un cliente a partir de ella.');
   if (row.archived_at) throw new HttpError(400, 'La cotización está archivada.');
 
@@ -78,17 +86,20 @@ export async function publishQuote(options) {
   quote.meta = quote.meta || {};
 
   const slug = await reserveSlug(supabase, quoteId, row, quote);
-  const general = await generalEvidence(supabase, quote, user.id);
+  const general = await generalEvidence(supabase, quote, user.id, allowedOwners);
   const ids = mediaRefs(quote, general);
 
   const assetPaths = {};
   const assets = {};
   if (ids.length) {
-    const { data: mediaRows, error: mediaError } = await supabase
-      .from('media')
-      .select('*')
-      .in('id', ids)
-      .eq('owner_id', user.id);
+    const owners = Array.isArray(allowedOwners) && allowedOwners.length ? allowedOwners : [user.id];
+    let mediaQuery = supabase.from('media').select('*').in('id', ids);
+    if (owners.length === 1) {
+      mediaQuery = mediaQuery.eq('owner_id', owners[0]);
+    } else {
+      mediaQuery = mediaQuery.in('owner_id', owners);
+    }
+    const { data: mediaRows, error: mediaError } = await mediaQuery;
     if (mediaError) throw new HttpError(500, 'No se pudieron leer las imágenes.');
 
     for (const media of mediaRows || []) {

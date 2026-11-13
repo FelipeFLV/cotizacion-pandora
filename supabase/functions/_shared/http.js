@@ -33,7 +33,11 @@ export async function requireUser(req, supabase, allowedEmail) {
   if (error || !data || !data.user) throw new HttpError(401, 'Sesión no válida.');
 
   const email = String(data.user.email || '').toLowerCase();
-  if (!allowedEmail || email !== String(allowedEmail).toLowerCase()) {
+  const allowedList = String(allowedEmail || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowedList.length || !allowedList.includes(email)) {
     throw new HttpError(403, 'Ese correo no está autorizado.');
   }
   return data.user;

@@ -56,7 +56,7 @@
 
   function isAllowed(user) {
     const email = String((user && user.email) || '').trim().toLowerCase();
-    return Boolean(email) && email === PADMIN.config.allowedEmail();
+    return Boolean(email) && PADMIN.config.isAllowedEmail(email);
   }
 
   PADMIN.auth = { init, signIn, signOut, session, onChange, isAllowed, redirectTo };

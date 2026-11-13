@@ -39,6 +39,19 @@ Deno.serve(async (req) => {
       .single();
     jobId = (job && job.id) || '';
 
+    const allowedEmails = (env('ALLOWED_EMAIL') || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    let allowedOwners: string[] = [user.id];
+    try {
+      const { data: usersData } = await supabase.auth.admin.listUsers();
+      if (usersData && usersData.users) {
+        allowedOwners = usersData.users
+          .filter((u: any) => allowedEmails.includes(String(u.email || '').toLowerCase()))
+          .map((u: any) => u.id);
+      }
+    } catch (_) {
+      // fallback
+    }
+
     const result = await retireQuote({
       supabase,
       github: createGithub({
@@ -48,6 +61,7 @@ Deno.serve(async (req) => {
       }),
       user,
       quoteId,
+      allowedOwners,
       siteBase: env('SITE_BASE'),
       now: new Date().toISOString()
     });

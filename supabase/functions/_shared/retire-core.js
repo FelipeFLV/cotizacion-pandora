@@ -13,7 +13,9 @@ export async function retireQuote(options) {
   const { data: row, error } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
   if (error && error.code !== 'PGRST116') throw new HttpError(500, 'No se pudo leer la cotización.');
   if (!row) throw new HttpError(404, 'No existe la cotización.');
-  if (row.owner_id !== user.id) throw new HttpError(403, 'Esa cotización no te pertenece.');
+  const allowedOwners = opts.allowedOwners;
+  const isOwner = row.owner_id === user.id || (Array.isArray(allowedOwners) && allowedOwners.includes(row.owner_id));
+  if (!isOwner) throw new HttpError(403, 'Esa cotización no te pertenece.');
   if (row.is_template) throw new HttpError(400, 'Una plantilla no se puede retirar.');
   if (!row.slug) throw new HttpError(400, 'Esta cotización nunca se publicó.');
 

@@ -41,6 +41,15 @@ test('the allowed email is accepted case-insensitively', async () => {
   assert.equal(user.id, 'u1');
 });
 
+test('multiple allowed emails in comma-separated list are accepted', async () => {
+  const user = await requireUser(request('good'), supabase, 'otro@example.com, felipe@example.com, info@pandoramarketing.net');
+  assert.equal(user.id, 'u1');
+  await assert.rejects(requireUser(request('good'), supabase, 'otro@example.com, nadie@example.com'), (error) => {
+    assert.equal(error.status, 403);
+    return true;
+  });
+});
+
 test('json responses carry the cors headers of the allowed origin', async () => {
   const response = json(200, { ok: true }, 'https://felipeflv.github.io');
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://felipeflv.github.io');

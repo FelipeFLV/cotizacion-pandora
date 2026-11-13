@@ -29,6 +29,10 @@ test('config is public and complete', () => {
   assert.match(cfg.SUPABASE_URL, /^https:\/\/[a-z0-9]+\.supabase\.co$/);
   assert.match(cfg.ALLOWED_EMAIL, /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i);
   assert.equal(cfg.SUPABASE_ANON_KEY.split('.').length, 3);
+  assert.equal(win.PADMIN.config.isAllowedEmail('felipeflores1986@gmail.com'), true);
+  assert.equal(win.PADMIN.config.isAllowedEmail('info@pandoramarketing.net'), true);
+  assert.equal(win.PADMIN.config.isAllowedEmail('Info@PandoraMarketing.net'), true);
+  assert.equal(win.PADMIN.config.isAllowedEmail('desconocido@example.com'), false);
 });
 
 test('config validation rejects bad values', () => {
