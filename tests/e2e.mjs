@@ -526,12 +526,14 @@ try {
     nameHidden: document.getElementById('client-name').hidden,
     nameText: document.getElementById('client-name').textContent.trim(),
     forHidden: document.querySelector('.for').hidden,
+    forText: document.querySelector('.for').textContent.trim(),
     logoShown: !document.querySelector('[data-client-logo]').hidden,
     title: document.title
   }));
   assert.equal(logoOnly.nameHidden, true, 'sin nombre no queda un titular vacío');
   assert.equal(logoOnly.nameText, '', 'el nombre no se escribe cuando no existe');
-  assert.equal(logoOnly.forHidden, true, 'sin nombre no se anuncia “Propuesta preparada para”');
+  assert.equal(logoOnly.forHidden, false, 'la etiqueta «Propuesta preparada para» se mantiene');
+  assert.equal(logoOnly.forText, 'Propuesta preparada para', 'la etiqueta introduce el logo del cliente');
   assert.equal(logoOnly.logoShown, true, 'el logo del cliente ocupa el lugar del nombre');
   assert.match(logoOnly.title, /OCT26-23/, 'el título usa el número de cotización cuando no hay nombre');
 

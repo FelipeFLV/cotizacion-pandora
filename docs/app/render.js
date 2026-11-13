@@ -475,6 +475,7 @@
   }
 
   // Sin nombre no se reserva una línea vacía: el titular es solo el logo.
+  // La etiqueta «Propuesta preparada para» se mantiene: el logo va después.
   // En el editor interno el titular lleva un campo editable y no se toca.
   function syncClientName(quote) {
     const node = document.getElementById('client-name');
@@ -482,9 +483,6 @@
     const name = clientName(quote);
     node.textContent = name;
     node.hidden = !name;
-    document.querySelectorAll('.for').forEach((el) => {
-      el.hidden = !name;
-    });
   }
 
   function sync(quote) {
