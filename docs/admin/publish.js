@@ -21,10 +21,6 @@
   const SHOWING = 'Mostrando…';
   const HIDDEN_NOTE = 'Oculta. El cliente verá «Propuesta en preparación» en la misma URL.';
   const VISIBLE_NOTE = 'Visible. La página vuelve a mostrar la propuesta.';
-  // El servicio de publicación exige un cliente no vacío. Cuando la cotización
-  // se publica solo con logo se guarda este marcador invisible y se restaura
-  // el nombre vacío en cuanto termina la llamada.
-  const PLACEHOLDER = '\u200B';
   const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
 
   let row = null;
@@ -241,13 +237,8 @@
     error = '';
     repaint();
 
-    const placeholder = !currentName();
     let result = null;
     try {
-      if (placeholder) {
-        PADMIN.editor.setMeta('client', PLACEHOLDER);
-        await PADMIN.editor.flush();
-      }
       result = await quote(row.id);
       row = Object.assign({}, row, {
         status: 'published',
@@ -261,21 +252,11 @@
       error = failure && failure.message ? failure.message : 'No se pudo publicar.';
       note = '';
     } finally {
-      if (placeholder) await restoreName('');
       busy = '';
       repaint();
     }
 
     if (result && hooks.onPublished) await hooks.onPublished(row.id, result.url);
-  }
-
-  async function restoreName(value) {
-    try {
-      PADMIN.editor.setMeta('client', value);
-      await PADMIN.editor.flush();
-    } catch (failure) {
-      // La página ya está publicada y el marcador invisible se ve como vacío.
-    }
   }
 
   async function setVisible(next) {
