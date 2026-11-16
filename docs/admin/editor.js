@@ -54,7 +54,7 @@
       <span class="field-label">Logo del cliente <em>opcional</em></span>
       <div class="logo-row">
         ${logo ? `<img class="logo-preview" src="${esc(logo)}" alt="Logo del cliente">` : ''}
-        <span class="logo-empty">${logo ? 'El nombre puede quedar vacío: la página y el PDF mostrarán solo el logo.' : 'Sin logo se necesita el nombre en texto.'}</span>
+        <span class="logo-empty">${logo ? 'El nombre puede quedar vacío en la página y el PDF A4, pero la proforma lo exige.' : 'Sin logo se necesita el nombre en texto.'}</span>
         <span class="logo-tools">
           <label class="mini logo-pick">${logo ? 'Cambiar logo' : 'Subir logo'}
             <input type="file" data-logo-input accept="image/png,image/jpeg,image/webp" hidden>
@@ -104,7 +104,7 @@
   function clientSection() {
     const meta = current.meta || {};
     return section('cliente', 'Cliente', `<div class="grid-2">
-      ${F.text({ path: 'meta.client', label: 'Cliente', value: String(meta.client || '').replace(/\u200B/g, ''), hint: 'Opcional si subes el logo del cliente.' })}
+      ${F.text({ path: 'meta.client', label: 'Cliente', value: String(meta.client || '').replace(/\u200B/g, ''), hint: 'Opcional en la propuesta si subes el logo. Obligatorio para el PDF Proforma.' })}
       ${F.text({ path: 'meta.quoteNo', label: 'N.º de cotización', value: meta.quoteNo })}
       ${dateField()}
       ${F.text({ path: 'meta.duration', label: 'Duración', value: meta.duration })}
@@ -144,7 +144,8 @@
       <div class="grid-2">
         ${F.text({ path: `${base}.tagline`, label: 'Bajada', value: block.tagline })}
         ${F.text({ path: `${base}.duration`, label: 'Duración', value: block.duration })}
-        ${F.list({ path: `${base}.deliverables`, label: 'Entregables', items: block.deliverables })}
+        ${F.list({ path: `${base}.deliverables`, label: 'Entregables / detalle', items: block.deliverables })}
+        ${F.list({ path: `${base}.includesAlso`, label: 'Incluye también (proforma)', items: block.includesAlso, rows: 3, hint: 'Opcional. Una línea por elemento; aparece solo en el PDF Proforma.' })}
         ${F.list({ path: `${base}.considerations`, label: 'Consideraciones', items: block.considerations })}
       </div>
       <div class="items-edit">

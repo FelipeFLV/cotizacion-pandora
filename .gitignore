@@ -4,6 +4,7 @@ node_modules/
 *.log
 .superpowers/
 tests/tmp/
+output/
 docs/c/_e2e*/
 pandora-*.json
 pandora-biblioteca-*.json

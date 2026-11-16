@@ -390,6 +390,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   outline: none;
   background: var(--white);
 }
+.field input[aria-invalid="true"] { border-color: #7A2A1E; background: #FFF7F6; }
 
 .field-check { flex-direction: row; align-items: center; gap: 10px; grid-column: 1 / -1; }
 .field-check > span { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink-2); }
@@ -513,7 +514,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- vista previa ---------- */
 
-.editor-tools { display: flex; gap: 8px; margin-top: 14px; }
+.editor-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
 .preview-layer {
   position: fixed;

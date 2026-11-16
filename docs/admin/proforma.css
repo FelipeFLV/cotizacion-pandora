@@ -1,0 +1,192 @@
+@page {
+  size: A4;
+  margin: 0;
+}
+
+* { box-sizing: border-box; }
+
+html { color: #101010; background: #fff; }
+
+body {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #101010;
+  font: 13pt/1.23 Arial, Helvetica, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.proforma { padding: 15mm 30mm 26mm; }
+
+.page { position: relative; }
+
+.page::before {
+  position: absolute;
+  top: 0;
+  bottom: 19mm;
+  left: -15mm;
+  width: .35mm;
+  background: #bac5c3;
+  content: "";
+}
+
+.page--totals { padding-top: 15mm; }
+
+.document-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 24mm;
+}
+
+.document-head--secondary { min-height: 18.5mm; }
+
+.brand {
+  display: block;
+  width: 67mm;
+  height: auto;
+  margin-left: -7mm;
+}
+
+.brand--fixed { display: none; }
+
+.document-title { padding-top: 10mm; text-align: right; }
+.document-title h1 { margin: 0 0 2.8mm; font-size: 13pt; line-height: 1.23; }
+.document-title time { font-size: 13pt; }
+
+.company { margin-top: 11.8mm; }
+.company p { margin: 0 0 2mm; }
+
+.customer { margin-top: 11.4mm; }
+.customer p { margin: 0 0 2mm; }
+.client-logo { display: block; max-width: 110mm; max-height: 32mm; margin: 0 0 2mm; object-fit: contain; object-position: left center; }
+.client-logo[hidden], .customer-name:empty { display: none; }
+
+.service { margin-top: 12mm; break-inside: avoid; }
+.service-title { margin: 0 0 3mm; font-size: 13pt; font-weight: 700; }
+.service-section { margin: 0 0 12mm; break-inside: avoid; }
+.service-section h3,
+.investment h2,
+.bank-details h2 {
+  margin: 0 0 3mm;
+  font-size: 13pt;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.proforma-list { margin: 0; padding: 0 0 0 6mm; list-style: none; }
+.proforma-list li { position: relative; margin: 0 0 1mm; padding-left: 6.5mm; }
+.proforma-list li::before { position: absolute; left: 0; content: "-"; }
+.service-section--extra .proforma-list { padding-left: 19mm; }
+
+.investment { margin-top: 0; break-inside: avoid; }
+.investment p { margin: 0; }
+
+.bank-details { margin-top: 12mm; break-inside: avoid; }
+.bank-line { margin: 0 0 1mm; }
+
+.validity { margin: 107mm 0 0; text-align: right; break-inside: avoid; }
+
+.document-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8mm;
+  min-height: 19mm;
+  margin: 7mm -30mm 0;
+  padding: 3mm 22mm;
+  border-top: .35mm solid #d0d8d7;
+  background: #e9eeee;
+  color: #526064;
+  font-size: 9pt;
+}
+
+.contact { display: flex; gap: 7mm; align-items: center; }
+.contact-item { display: inline-flex; align-items: center; gap: 1.6mm; white-space: nowrap; }
+.icon { width: 4.4mm; height: 4.4mm; fill: currentColor; }
+.icon--mail { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.document-foot strong { color: #26343a; font-size: 9pt; }
+
+.document-foot--flow::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 15mm;
+  width: .35mm;
+  background: #bac5c3;
+  content: "";
+}
+.document-foot--flow::after {
+  position: absolute;
+  top: -1.2mm;
+  left: 13.75mm;
+  width: 2.5mm;
+  height: 2.5mm;
+  transform: rotate(45deg);
+  background: #bac5c3;
+  content: "";
+}
+
+.print-chrome { display: none; }
+
+@media screen {
+  body { box-shadow: 0 2mm 8mm rgba(0, 0, 0, .16); }
+  .proforma { padding-bottom: 0; }
+  .page--main, .page--totals { display: flex; flex-direction: column; min-height: 282mm; }
+  .page--totals { margin-top: 8mm; }
+  .document-foot--flow { margin-top: auto; }
+}
+
+@media print {
+  html, body { width: auto; min-height: 0; margin: 0; }
+  body { padding: 0; box-shadow: none; }
+  .page--main, .page--totals { display: block; min-height: 0; }
+  .page::before { display: none; }
+  .page--totals {
+    margin-top: 0;
+    padding-top: 33.5mm;
+    break-before: page;
+  }
+  .document-head--secondary { display: none; }
+  .brand { visibility: hidden; }
+  .document-foot--flow { display: none; }
+
+  .print-chrome { display: block; }
+  .brand--fixed {
+    position: fixed;
+    top: 15mm;
+    left: 23mm;
+    display: block;
+    width: 67mm;
+    height: auto;
+    margin: 0;
+    visibility: visible;
+  }
+  .rail {
+    position: fixed;
+    top: 0;
+    bottom: 19mm;
+    left: 15mm;
+    width: .35mm;
+    background: #bac5c3;
+  }
+  .diamond {
+    position: fixed;
+    left: 13.75mm;
+    bottom: 17.75mm;
+    width: 2.5mm;
+    height: 2.5mm;
+    transform: rotate(45deg);
+    background: #bac5c3;
+  }
+  .document-foot--fixed {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+  }
+}

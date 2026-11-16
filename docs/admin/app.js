@@ -98,6 +98,7 @@
       <div class="editor-tools">
         <button class="mini" data-panel="preview" type="button">Vista previa</button>
         <button class="mini" data-panel="pdf" type="button">PDF A4</button>
+        <button class="mini" data-panel="proforma" type="button">PDF Proforma</button>
       </div>
     </div>`;
   }
@@ -411,18 +412,20 @@
       }
     }
 
-    function open(input) {
+    function open(input, format) {
       const data = input || {};
       if (!data.quote) return;
+      const proforma = format === 'proforma';
       const resolved = data.signedMap
         ? PADMIN.modelMedia.resolve(data.quote, data.general, data.signedMap)
         : { quote: data.quote, general: data.general };
       ready = false;
-      $('preview-title').textContent = `Vista previa · ${name(data.quote)}`;
+      $('preview-title').textContent = `${proforma ? 'Proforma' : 'Vista previa'} · ${name(data.quote)}`;
+      $('preview-frame').title = proforma ? 'Vista previa de la proforma' : 'Vista previa de la cotización';
       $('preview-layer').hidden = false;
       doc.body.classList.add('preview-open');
       pending = () => send({ quote: resolved.quote, general: resolved.general, meta: data.meta });
-      $('preview-frame').src = `preview.html?t=${Date.now()}`;
+      $('preview-frame').src = `${proforma ? 'proforma' : 'preview'}.html?t=${Date.now()}`;
       $('preview-close').focus();
     }
 
@@ -485,11 +488,14 @@
     };
   }
 
-  async function buildPreview() {
+  async function buildPreview(includeMedia) {
     const row = active();
     if (!row) return null;
     await PADMIN.editor.flush();
     const quote = state.editing ? state.editing.quote : PADMIN.model.rowToQuote(row);
+    if (includeMedia === false) {
+      return { quote, general: {}, meta: { generatedAt: new Date().toISOString() } };
+    }
     const general = await generalEvidence(quote);
     const ids = PADMIN.modelMedia.refs(quote, general);
     let signedMap = {};
@@ -504,10 +510,22 @@
     return { quote: resolved.quote, general: resolved.general, meta: { generatedAt: new Date().toISOString() } };
   }
 
-  async function openPreview(shouldPrint) {
-    const data = await buildPreview();
+  async function openPreview(format) {
+    const mode = format === 'proforma' ? 'proforma' : 'standard';
+    const shouldPrint = format === true || format === 'pdf' || format === 'proforma';
+    const data = await buildPreview(mode !== 'proforma');
     if (!data) return;
-    preview.open(data);
+    if (mode === 'proforma' && !String((data.quote.meta || {}).client || '').trim()) {
+      toast('Escribe el nombre del cliente para generar la proforma.', 'error');
+      const field = $('f-meta-client');
+      if (field) {
+        field.setAttribute('aria-invalid', 'true');
+        field.focus();
+        field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      return;
+    }
+    preview.open(data, mode);
     if (shouldPrint) preview.print();
   }
 
@@ -542,6 +560,7 @@
         state.query = event.target.value;
         renderList();
       }
+      if (event.target.id === 'f-meta-client') event.target.removeAttribute('aria-invalid');
     });
 
     doc.addEventListener('click', async (event) => {
@@ -563,7 +582,7 @@
       const panelAction = event.target.closest('[data-panel]');
       if (panelAction) {
         try {
-          await openPreview(panelAction.dataset.panel === 'pdf');
+          await openPreview(panelAction.dataset.panel);
         } catch (error) {
           toast(error.message, 'error');
         }

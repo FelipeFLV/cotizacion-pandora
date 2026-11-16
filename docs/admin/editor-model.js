@@ -42,6 +42,7 @@
       tagline: '',
       duration: '',
       deliverables: [],
+      includesAlso: [],
       considerations: [],
       process: [],
       items: [],

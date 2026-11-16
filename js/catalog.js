@@ -246,6 +246,7 @@
       tagline: service.tagline,
       duration: service.duration,
       deliverables: clone(service.deliverables),
+      includesAlso: clone(service.includesAlso || []),
       considerations: clone(service.considerations),
       process: clone(service.process || []),
       items: clone(service.items),
