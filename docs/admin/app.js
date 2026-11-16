@@ -44,7 +44,7 @@
     $('export-open').hidden = true;
     $('who').textContent = '';
     $('login-form').hidden = false;
-    $('email').value = PADMIN.config.allowedEmail();
+    $('email').value = '';
     $('email').focus();
   }
 
