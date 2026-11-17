@@ -47,14 +47,23 @@
       process: [],
       items: [],
       videos: [],
-      images: []
+      images: [],
+      showEvidence: true
     };
   }
 
-  function addBlock(quote) {
+  function addBlock(quote, serviceId) {
     const out = clone(quote);
     out.blocks = out.blocks || [];
-    out.blocks.push(emptyBlock(nextUid(out)));
+    const fresh = serviceId && P && typeof P.blockFromService === 'function'
+      ? P.blockFromService(serviceId)
+      : null;
+    if (!fresh) {
+      out.blocks.push(emptyBlock(nextUid(out)));
+      return out;
+    }
+    if (out.blocks.some((block) => block.uid === fresh.uid)) fresh.uid = nextUid(out);
+    out.blocks.push(fresh);
     return out;
   }
 

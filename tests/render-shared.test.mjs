@@ -5,7 +5,8 @@ import {
   slugify,
   uniqueSlug,
   mediaRefs,
-  applyMediaMap
+  applyMediaMap,
+  visibleEvidence
 } from '../supabase/functions/_shared/render.js';
 
 const require = createRequire(import.meta.url);
@@ -34,4 +35,46 @@ test('applyMediaMap rewrites only media refs', () => {
   const out = applyMediaMap(quote, { videos: [], images: [] }, { a: 'assets/c/x/a.webp' });
   assert.equal(out.quote.blocks[0].videos[0].src, 'assets/c/x/a.webp');
   assert.equal(out.quote.blocks[0].videos[0].poster, 'assets/x.jpg');
+});
+
+test('visibleEvidence keeps only pieces and services that are published', () => {
+  const quote = {
+    evidence: { mode: 'service', generalIds: { videos: [], images: [] } },
+    blocks: [
+      {
+        showEvidence: false,
+        videos: [{ src: 'media:off' }],
+        images: [{ src: 'media:off2' }]
+      },
+      {
+        videos: [{ src: 'media:a' }, { src: 'media:b', visible: false }],
+        images: [{ src: 'media:c', visible: false }]
+      }
+    ]
+  };
+  const bank = { videos: [{ src: 'media:bank' }], images: [] };
+  const out = visibleEvidence(quote, bank);
+
+  assert.deepEqual(out.quote.blocks[0].videos, []);
+  assert.deepEqual(out.quote.blocks[0].images, []);
+  assert.deepEqual(out.quote.blocks[1].videos.map((piece) => piece.src), ['media:a']);
+  assert.deepEqual(out.quote.blocks[1].images, []);
+  assert.deepEqual(out.general, { videos: [], images: [] });
+  assert.equal(quote.blocks[1].videos.length, 2, 'no muta la cotización original');
+});
+
+test('visibleEvidence hides service evidence in general or none modes', () => {
+  const quote = {
+    evidence: { mode: 'general', generalIds: { videos: [], images: [] } },
+    blocks: [{ videos: [{ src: 'media:a' }], images: [] }]
+  };
+  const bank = { videos: [{ src: 'media:bank' }], images: [{ src: 'media:bank2' }] };
+  const general = visibleEvidence(quote, bank);
+  assert.deepEqual(general.quote.blocks[0].videos, []);
+  assert.equal(general.general.videos.length, 1);
+
+  quote.evidence.mode = 'none';
+  const none = visibleEvidence(quote, bank);
+  assert.deepEqual(none.quote.blocks[0].videos, []);
+  assert.deepEqual(none.general, { videos: [], images: [] });
 });

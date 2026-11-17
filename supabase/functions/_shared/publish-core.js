@@ -1,6 +1,6 @@
 /* Núcleo de publicación, independiente de Deno: recibe Supabase, GitHub y la
    plantilla ya construidos. La Edge Function solo envuelve HTTP y auditoría. */
-import { mediaRefs, slugify } from './render.js';
+import { mediaRefs, slugify, visibleEvidence } from './render.js';
 import { planPublish } from './plan.js';
 import { HttpError } from './http.js';
 
@@ -86,8 +86,12 @@ export async function publishQuote(options) {
   quote.meta = quote.meta || {};
 
   const slug = await reserveSlug(supabase, quoteId, row, quote);
-  const general = await generalEvidence(supabase, quote, user.id, allowedOwners);
-  const ids = mediaRefs(quote, general);
+  const mode = (quote.evidence && quote.evidence.mode) || 'service';
+  const general = mode === 'general' || mode === 'both'
+    ? await generalEvidence(supabase, quote, user.id, allowedOwners)
+    : { videos: [], images: [] };
+  const publishable = visibleEvidence(quote, general);
+  const ids = mediaRefs(publishable.quote, publishable.general);
 
   const assetPaths = {};
   const assets = {};
@@ -125,8 +129,8 @@ export async function publishQuote(options) {
   try {
     const existingPaths = await github.listPaths(`docs/assets/c/${slug}/`);
     plan = planPublish({
-      quote,
-      general,
+      quote: publishable.quote,
+      general: publishable.general,
       slug,
       siteBase,
       generatedAt: now,

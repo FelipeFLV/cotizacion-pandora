@@ -85,11 +85,15 @@ El botón **Evidencias** define qué verá el cliente:
 - **Servicio**: videos e imágenes de cada servicio de la cotización.
 - **General**: piezas de otros trabajos, elegidas del banco general.
 - **Ambas**: las dos cosas.
-- **Ocultar**: no se muestra ninguna evidencia en la versión cliente.
+- **Sin evidencia**: no se muestra ninguna evidencia en la versión cliente.
+
+Dentro de **Evidencia por servicio** puedes apagar un servicio completo o piezas sueltas. Una pieza apagada sigue disponible en el editor con la marca **Oculta en la versión cliente**, pero no se publica ni viaja en el paquete. Si apagas todas las piezas de un servicio, su sección de evidencia desaparece y la navegación se ajusta.
 
 **Modo cliente nuevo** cambia a `General` y, si no había selección, marca todo el banco; si ya había una selección, la conserva.
 
 Si exportas en modo `General` sin ninguna pieza marcada, la matriz avisa y usa la evidencia de cada servicio como respaldo.
+
+El catálogo de servicios vive en `docs/app/catalog-data.js` y lo comparten la matriz y el panel. Los servicios sin precios establecidos se crean como plantillas editables: el equipo ajusta montos, alcance y evidencias según cada cliente. **Meta Ads** se mantiene como servicio adicional.
 
 Para sumar una pieza al banco general:
 

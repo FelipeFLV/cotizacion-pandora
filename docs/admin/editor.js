@@ -167,8 +167,16 @@
 
   function servicesSection() {
     const blocks = (current.blocks || []).map((block, index) => blockSection(block, index)).join('');
+    const services = Object.values(root.P.catalog || {});
+    const options = services
+      .map((service) => `<option value="${esc(service.id)}">${esc(service.name)}</option>`)
+      .join('');
     return section('servicios', 'Servicios', `<div class="blocks">${blocks}</div>
-      <button class="mini" data-op="block-add" type="button">Añadir servicio</button>`);
+      <div class="service-add">
+        <select data-service-pick aria-label="Servicio del catálogo">${options}</select>
+        <button class="mini" data-op="block-add" type="button">Añadir servicio</button>
+      </div>
+      <p class="field-hint">El catálogo trae el alcance y las líneas base. Ajusta montos, textos y evidencias según el cliente.</p>`);
   }
 
   function investmentSection() {
@@ -472,8 +480,10 @@
     }
     const index = Number(node.dataset.index);
     let next = current;
-    if (op === 'block-add') next = M.addBlock(current);
-    else if (op === 'block-up') next = M.moveBlock(current, index, index - 1);
+    if (op === 'block-add') {
+      const pick = node.parentElement && node.parentElement.querySelector('[data-service-pick]');
+      next = M.addBlock(current, pick ? pick.value : '');
+    } else if (op === 'block-up') next = M.moveBlock(current, index, index - 1);
     else if (op === 'block-down') next = M.moveBlock(current, index, index + 1);
     else if (op === 'block-dup') next = M.duplicateBlock(current, index);
     else if (op === 'block-del') next = M.removeBlock(current, index);

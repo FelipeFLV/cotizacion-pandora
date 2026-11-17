@@ -4,7 +4,8 @@ import {
   applyMediaMap,
   buildClientHtml,
   resolveSlug,
-  validatePackage
+  validatePackage,
+  visibleEvidence
 } from './render.js';
 
 const MEDIA_RE = /^media:([A-Za-z0-9_-]{1,64})$/;
@@ -81,8 +82,9 @@ export function planPublish(options) {
   if (opts.isTemplate) {
     throw new Error('Una plantilla no se puede publicar: crea un cliente a partir de ella.');
   }
-  const quote = opts.quote;
-  const general = opts.general || { videos: [], images: [] };
+  const source = visibleEvidence(opts.quote, opts.general);
+  const quote = source.quote;
+  const general = source.general;
   const slug = resolveSlug({ slug: opts.slug });
   const siteBase = String(opts.siteBase || '').replace(/\/+$/, '');
   const template = opts.template;

@@ -6,6 +6,7 @@ import vm from 'node:vm';
 
 const require = createRequire(import.meta.url);
 const P = require('../docs/app/core.js');
+Object.assign(P, require('../docs/app/catalog-data.js'));
 
 function load() {
   const sandbox = { window: { P }, console };
@@ -74,6 +75,18 @@ test('blocks can be added, moved and removed', () => {
   q = removeBlock(q, 0);
   assert.equal(q.blocks.length, 1);
   assert.equal(removeBlock(q, 0).blocks.length, 1, 'siempre queda un bloque');
+});
+
+test('a block can be created from the shared catalog', () => {
+  const q = addBlock(quote(), 'web');
+  const block = q.blocks[1];
+  assert.equal(block.serviceId, 'web');
+  assert.equal(block.serviceName, 'Páginas Web');
+  assert.equal(block.title, 'Diseño y desarrollo de páginas web');
+  assert.deepEqual(block.items, []);
+  assert.deepEqual(block.videos, []);
+  assert.equal(block.showEvidence, true);
+  assert.notEqual(block.uid, 'b1');
 });
 
 test('duplicating a block gives it a new uid', () => {

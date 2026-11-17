@@ -9,7 +9,7 @@
     { id: 'service', label: 'Servicio' },
     { id: 'general', label: 'General' },
     { id: 'both', label: 'Ambas' },
-    { id: 'none', label: 'Ocultar' }
+    { id: 'none', label: 'Sin evidencia' }
   ];
 
   const YOUTUBE_RE = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/;
@@ -64,6 +64,7 @@
         <span class="ev-src">${esc(piece.src)}</span>
       </span>
       <span class="ev-tools">
+        <label class="ev-check"><input type="checkbox" data-op="ev-piece-visible" data-path="${esc(path)}" data-index="${index}"${piece.visible === false ? '' : ' checked'}> Mostrar</label>
         <button class="mini" data-op="ev-bank-add" data-path="${esc(path)}" data-index="${index}" type="button">Al banco</button>
         <button class="mini mini-quiet" data-op="ev-del" data-path="${esc(path)}" data-index="${index}" type="button">Quitar</button>
       </span>
@@ -88,6 +89,7 @@
     return `<article class="ev-block" data-ev-block="${index}">
       <header class="ev-block-head">
         <h4>${esc(block.title || 'Servicio sin título')}</h4>
+        <label class="ev-check"><input type="checkbox" data-op="ev-service-visible" data-index="${index}"${block.showEvidence === false ? '' : ' checked'}> Mostrar evidencia de este servicio</label>
       </header>
       <div class="ev-group">
         <span class="ev-label">Videos</span>
@@ -129,7 +131,7 @@
     }).join('');
     return `<div class="ev-bank">
       <span class="ev-label">Banco general</span>
-      <p class="field-hint">Marca las piezas que quieres mostrar en la versión cliente.</p>
+      <p class="field-hint">En los modos «General» o «Ambas», marca las piezas que quieres mostrar.</p>
       <ul class="ev-list">${rows}</ul>
     </div>`;
   }
@@ -146,6 +148,7 @@
         <span class="ev-label">Evidencias en la versión cliente</span>
         <div class="ev-modes" role="group" aria-label="Modo de evidencias">${modes}</div>
       </div>
+      <p class="field-hint">En «Servicio» y «Ambas» se respetan las casillas de cada servicio y de cada pieza. «Sin evidencia» no muestra ninguna.</p>
       ${blocks || '<p class="ev-empty">Añade un servicio para cargar sus evidencias.</p>'}
       ${bankPanel(quote, data.bank, signedMap)}
     </div>`;
@@ -194,6 +197,18 @@
     if (name === 'ev-mode') {
       if (!dataset.evMode) return quote;
       return setPath(quote, 'evidence.mode', dataset.evMode);
+    }
+
+    if (name === 'ev-service-visible') {
+      const index = Number(dataset.index);
+      if (!Number.isInteger(index) || index < 0) return quote;
+      return setPath(quote, `blocks.${index}.showEvidence`, Boolean(node && node.checked));
+    }
+
+    if (name === 'ev-piece-visible') {
+      const index = Number(dataset.index);
+      if (!dataset.path || !Number.isInteger(index) || index < 0) return quote;
+      return setPath(quote, `${dataset.path}.${index}.visible`, Boolean(node && node.checked));
     }
 
     if (name === 'ev-add-video' || name === 'ev-add-image') {

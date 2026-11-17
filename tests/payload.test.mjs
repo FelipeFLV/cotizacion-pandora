@@ -53,6 +53,22 @@ test('none mode strips every media and does not block on blob', () => {
   assert.deepEqual(P.validateMedia(p), []);
 });
 
+test('hidden pieces and services never reach the client package', () => {
+  const q = P.defaultQuote();
+  q.evidence.mode = 'service';
+  const total = q.blocks[0].videos.length;
+  q.blocks[0].videos[0].visible = false;
+
+  const partial = P.buildClientPayload(q, { bank: P.seedEvidenceBank(), now: NOW });
+  assert.equal(partial.quote.blocks[0].videos.length, total - 1);
+  assert.equal(partial.quote.blocks[0].videos[0].visible, undefined, 'la pieza oculta no viaja');
+
+  q.blocks[0].showEvidence = false;
+  const off = P.buildClientPayload(q, { bank: P.seedEvidenceBank(), now: NOW });
+  assert.equal(off.quote.blocks[0].videos.length, 0);
+  assert.equal(off.quote.blocks[0].images.length, 0);
+});
+
 test('slug is stable once set', () => {
   const q = P.defaultQuote();
   q.meta.slug = 'cliente-fijo';

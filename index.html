@@ -304,13 +304,19 @@
       <button data-action="evidence-mode" data-mode="service">Servicio</button>
       <button data-action="evidence-mode" data-mode="general">General</button>
       <button data-action="evidence-mode" data-mode="both">Ambas</button>
-      <button data-action="evidence-mode" data-mode="none">Ocultar</button>
+      <button data-action="evidence-mode" data-mode="none">Sin evidencia</button>
     </div>
 
     <div class="evidence-meta">
       <button class="btn small ghost" data-action="toggle-new-client" aria-pressed="false">Modo cliente nuevo</button>
       <p class="evidence-note" id="evidenceModeNote" hidden>No se mostrará evidencia en la versión cliente.</p>
     </div>
+
+    <section class="evidence-services">
+      <h3>Evidencia por servicio</h3>
+      <p class="evidence-help">Elige qué servicios y qué piezas se muestran cuando el modo incluye la evidencia por servicio.</p>
+      <div id="serviceEvidence"></div>
+    </section>
 
     <div class="evidence-grid">
       <section class="evidence-col">
@@ -395,6 +401,7 @@
 
 <script>window.P = { assetBase: 'docs/' };</script>
 <script src="docs/app/core.js"></script>
+<script src="docs/app/catalog-data.js"></script>
 <script src="js/config.js"></script>
 <script src="js/catalog.js"></script>
 <script src="js/store.js"></script>

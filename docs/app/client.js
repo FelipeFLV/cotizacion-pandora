@@ -183,10 +183,28 @@
     document.body.classList.add('ready');
   }
 
+  function visibleQuote(quote) {
+    const out = P.clone(quote);
+    out.blocks = (out.blocks || []).map((block) => {
+      const copy = block;
+      copy.videos = copy.videos || [];
+      copy.images = copy.images || [];
+      if (copy.showEvidence === false) {
+        copy.videos = [];
+        copy.images = [];
+      } else {
+        copy.videos = copy.videos.filter((item) => item.visible !== false);
+        copy.images = copy.images.filter((item) => item.visible !== false);
+      }
+      return copy;
+    });
+    return out;
+  }
+
   function init(data) {
     const payload = data || {};
     if (!payload.quote) return;
-    state.quote = payload.quote;
+    state.quote = visibleQuote(payload.quote);
     state.general = payload.general || { videos: [], images: [] };
     state.meta = payload.meta || {};
     if (payload.quote.meta && payload.quote.meta.hidden && !payload.preview) {

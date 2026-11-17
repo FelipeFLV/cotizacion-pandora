@@ -67,9 +67,28 @@
 
   const isEditor = () => !isRO() && OPTS.view === 'editor';
 
+  let hasServiceEvidence = false;
+
   function showsService() {
     if (isEditor()) return true;
     return OPTS.evidenceMode === 'service' || OPTS.evidenceMode === 'both';
+  }
+
+  function blockShowsEvidence(block) {
+    return Boolean(block) && block.showEvidence !== false;
+  }
+
+  function pieceShown(piece) {
+    return Boolean(piece) && piece.visible !== false;
+  }
+
+  function shownCount(block, kind) {
+    const list = (block && block[kind]) || [];
+    return list.filter(pieceShown).length;
+  }
+
+  function serviceEvidenceCounts(block) {
+    return { videos: shownCount(block, 'videos'), images: shownCount(block, 'images') };
   }
 
   function generalPieces() {
@@ -137,7 +156,7 @@
 
   function updateNav() {
     const evidence = document.querySelector('[data-nav][href="#evidencia"]');
-    if (evidence) evidence.hidden = !showsService();
+    if (evidence) evidence.hidden = !hasServiceEvidence;
     const general = document.querySelector('[data-nav][href="#otros-trabajos"]');
     if (general) general.hidden = !showsGeneral();
   }
@@ -151,13 +170,17 @@
     let n = 0;
     const nextNum = () => String(++n).padStart(2, '0');
     let html = '';
-    const withEvidence = showsService();
-    const hiddenService = isEditor() && (OPTS.evidenceMode === 'general' || OPTS.evidenceMode === 'none');
+    hasServiceEvidence = false;
+    let evidenceAnchor = false;
+    const hiddenMode = isEditor() && (OPTS.evidenceMode === 'general' || OPTS.evidenceMode === 'none');
 
     quote.blocks.forEach((block, bi) => {
       const first = bi === 0;
       const alcanceId = first ? 'alcance' : 'alcance-' + bi;
-      const evidenciaId = first ? 'evidencia' : 'evidencia-' + bi;
+      const counts = serviceEvidenceCounts(block);
+      const showsBlockEvidence = showsService() && blockShowsEvidence(block) && counts.videos + counts.images > 0;
+      const withEvidence = isEditor() || showsBlockEvidence;
+      const evidenciaId = evidenceAnchor ? 'evidencia-' + bi : 'evidencia';
 
       html += `<section class="section section-scope" id="${alcanceId}" data-block="${bi}" aria-labelledby="h-scope-${bi}">
         <header class="section-head">
@@ -226,23 +249,34 @@
         <div class="print-stats print-only">
           <div><span>Duración</span><strong>${esc(block.duration || '')}</strong></div>
           <div><span>Entregables</span><strong>${(block.deliverables || []).length}</strong></div>
-          ${withEvidence ? `<div><span>Evidencia</span><strong>${(block.videos || []).length} videos · ${(block.images || []).length} piezas</strong></div>` : ''}
+          ${withEvidence ? `<div><span>Evidencia</span><strong>${counts.videos} videos · ${counts.images} piezas</strong></div>` : ''}
           <div><span>Inversión</span><strong><span data-block-total="${bi}"></span><span class="stat-tax" data-tax-suffix> + IGV</span></strong></div>
         </div>
       </section>`;
 
       if (withEvidence) {
+        hasServiceEvidence = true;
+        evidenceAnchor = true;
+        const switchedOff = !blockShowsEvidence(block);
+        const hiddenPieces = (block.videos || []).filter((piece) => !pieceShown(piece)).length +
+          (block.images || []).filter((piece) => !pieceShown(piece)).length;
+        const badges = [
+          switchedOff ? 'No se muestra en la versión cliente' : '',
+          hiddenMode ? 'Modo sin evidencia por servicio' : '',
+          !switchedOff && hiddenPieces ? `${hiddenPieces} ${hiddenPieces === 1 ? 'pieza oculta' : 'piezas ocultas'}` : ''
+        ].filter(Boolean).map((text) => ` · <span class="mode-badge">${esc(text)}</span>`).join('');
+
         html += `<section class="section section-work" id="${evidenciaId}" data-block="${bi}" aria-labelledby="h-work-${bi}">
           <header class="section-head">
             <span class="num">${nextNum()}</span>
             <h2 id="h-work-${bi}">Evidencia de trabajo</h2>
             <span class="head-rule" aria-hidden="true"></span>
-            <span class="head-note">${(block.videos || []).length} videos · ${(block.images || []).length} piezas${hiddenService ? ' · <span class="mode-badge">Oculto en la versión cliente</span>' : ''}</span>
+            <span class="head-note">${counts.videos} videos · ${counts.images} piezas${badges}</span>
           </header>
 
           <div class="work-grid">
             ${(block.videos || []).map((video, vi) => `
-              <figure class="shot shot-${vi % 2 === 0 ? 'a' : 'b'}" data-video data-block="${bi}" data-index="${vi}">
+              <figure class="shot shot-${vi % 2 === 0 ? 'a' : 'b'}${isEditor() && !pieceShown(video) ? ' is-evidence-off' : ''}" data-video data-block="${bi}" data-index="${vi}">
                 <div class="shot-frame">
                   ${video.poster
                     ? `<img src="${esc(asset(video.poster))}" alt="" loading="lazy" draggable="false">`
@@ -255,15 +289,17 @@
                   <span class="shot-tag">Video</span>
                 </div>
                 ${capEditable(`blocks.${bi}.videos.${vi}.title`, video.title, editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="videos" data-index="${vi}">Reemplazar</button>`))}
+                ${isEditor() && !pieceShown(video) ? '<span class="piece-off-tag">Oculta en la versión cliente</span>' : ''}
               </figure>`).join('')}
 
             ${(block.images || []).map((image, ii) => `
-              <figure class="still" data-image>
+              <figure class="still${isEditor() && !pieceShown(image) ? ' is-evidence-off' : ''}" data-image>
                 <button class="still-link" data-action="lightbox" data-block="${bi}" data-index="${ii}"
                         aria-label="Ampliar ${altText(image.title, 'pieza')}">
                   <img src="${esc(asset(image.src))}" alt="${altText(image.title, 'Evidencia de trabajo')}" loading="lazy" draggable="false">
                 </button>
                 ${capEditable(`blocks.${bi}.images.${ii}.title`, image.title, editOnly(`<button class="mini edit-only" data-action="edit-media" data-block="${bi}" data-kind="images" data-index="${ii}">Reemplazar</button>`))}
+                ${isEditor() && !pieceShown(image) ? '<span class="piece-off-tag">Oculta en la versión cliente</span>' : ''}
               </figure>`).join('')}
           </div>
 

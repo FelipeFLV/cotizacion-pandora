@@ -94,6 +94,9 @@ test('evidence renders modes, pieces and the bank safely', () => {
   assert.doesNotMatch(html, /Video <x>/);
   assert.match(html, /data-op="ev-add-video"/);
   assert.match(html, /data-ev-file=/);
+  assert.match(html, /data-op="ev-service-visible"/);
+  assert.match(html, /data-op="ev-piece-visible"/);
+  assert.match(html, /Sin evidencia/);
   assert.match(html, /Banco &lt;video&gt;/);
   assert.match(html, /data-op="ev-toggle-general"[^>]*data-kind="video"[^>]*data-id="b1"[^>]*checked/);
 });
@@ -120,6 +123,24 @@ test('evidence ops update the quote immutably', () => {
     checked: true
   });
   assert.deepEqual(plain(toggled.evidence.generalIds.images), ['img-1']);
+
+  const serviceOff = evidence.op('ev-service-visible', quote, {
+    dataset: { index: '0' },
+    checked: false
+  });
+  assert.equal(serviceOff.blocks[0].showEvidence, false);
+  assert.equal(quote.blocks[0].showEvidence, undefined, 'no muta la cotización');
+
+  const pieceQuote = {
+    evidence: { mode: 'service', generalIds: { videos: [], images: [] } },
+    blocks: [{ title: 'Meta Ads', videos: [{ title: 'Video' }], images: [] }]
+  };
+  const pieceOff = evidence.op('ev-piece-visible', pieceQuote, {
+    dataset: { path: 'blocks.0.videos', index: '0' },
+    checked: false
+  });
+  assert.equal(pieceOff.blocks[0].videos[0].visible, false);
+  assert.equal(pieceQuote.blocks[0].videos[0].visible, undefined);
 });
 
 test('the editor wires evidence rendering, uploads and the bank', () => {

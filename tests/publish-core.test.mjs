@@ -253,6 +253,36 @@ test('bank evidence is downloaded and rendered for the client', async () => {
   ]);
 });
 
+test('a hidden piece is not uploaded nor embedded, but the quote keeps it', async () => {
+  const { state, supabase } = setup();
+  state.quotes[0].data.blocks[0].images[0].visible = false;
+
+  const github = fakeGithub();
+  await run(state, supabase, github);
+  const commit = github.calls.find((call) => call.type === 'commit').input;
+  const paths = commit.files.map((file) => file.path);
+  const html = commit.files.find((file) => file.path.endsWith('index.html'));
+
+  assert.equal(paths.some((file) => file.endsWith('m1.webp')), false, 'la imagen oculta no se sube');
+  assert.equal(html.content.includes('m1.webp'), false, 'la imagen oculta no viaja en el HTML');
+  assert.equal(state.quotes[0].data.blocks[0].images[0].visible, false, 'la marca se conserva en la base');
+});
+
+test('a service without evidence is not validated nor embedded', async () => {
+  const { state, supabase } = setup();
+  const data = state.quotes[0].data;
+  data.blocks[0].showEvidence = false;
+  data.blocks[0].images[0].src = 'blob:temporal';
+
+  const github = fakeGithub();
+  await run(state, supabase, github);
+  const commit = github.calls.find((call) => call.type === 'commit').input;
+  const html = commit.files.find((file) => file.path.endsWith('index.html'));
+
+  assert.equal(html.content.includes('blob:temporal'), false, 'la pieza bloqueada no se publica');
+  assert.equal(state.quotes[0].data.blocks[0].images[0].src, 'blob:temporal', 'la base conserva el borrador');
+});
+
 function brokenReader(supabase, code) {
   return Object.assign({}, supabase, {
     from(name) {

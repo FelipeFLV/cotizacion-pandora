@@ -163,3 +163,25 @@ export function applyMediaMap(quote, general, map) {
 export function isMediaRef(value) {
   return MEDIA_RE.test(String(value || ''));
 }
+
+/* Copia la cotización y el banco dejando solo la evidencia que se publica:
+   el modo `general` no muestra evidencia de servicio y `none` no muestra nada. */
+export function visibleEvidence(quote, general) {
+  const source = quote || {};
+  const mode = (source.evidence && source.evidence.mode) || 'service';
+  const keepService = mode === 'service' || mode === 'both';
+  const keepGeneral = mode === 'general' || mode === 'both';
+
+  const out = JSON.parse(JSON.stringify(source));
+  out.blocks = (out.blocks || []).map((block) => {
+    const copy = block;
+    const shown = keepService && copy.showEvidence !== false;
+    const visible = (piece) => piece && piece.visible !== false;
+    copy.videos = shown ? (copy.videos || []).filter(visible) : [];
+    copy.images = shown ? (copy.images || []).filter(visible) : [];
+    return copy;
+  });
+
+  const bank = keepGeneral ? general || { videos: [], images: [] } : { videos: [], images: [] };
+  return { quote: out, general: JSON.parse(JSON.stringify(bank)) };
+}

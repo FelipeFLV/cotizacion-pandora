@@ -84,6 +84,23 @@ function writeLogoOnlyPage() {
   writeFileSync(path.join(dir, 'index.html'), buildClientHtml({ template, pkg, base }));
 }
 
+function writeEvidenceVariant(slug, prepare) {
+  const template = readFileSync(path.join(root, 'tools/cliente.template.html'), 'utf8');
+  const quote = P.defaultQuote();
+  quote.id = 'q_e2e_ev';
+  quote.meta.client = 'Cliente Prueba';
+  quote.evidence = { mode: 'service', generalIds: { videos: [], images: [] } };
+  prepare(quote);
+  const payload = P.buildClientPayload(quote, { bank, now: new Date(2026, 9, 27, 10, 42) });
+  const pkg = { slug, generatedAt: payload.generatedAt, quote: payload.quote, general: payload.general };
+  const dir = path.join(root, 'docs/c', slug);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'index.html'), buildClientHtml({ template, pkg, base }));
+}
+
+const HIDDEN_VIDEO = P.catalog.metaads.videos[0].title;
+const HIDDEN_IMAGE = P.catalog.metaads.images[0].title;
+
 async function waitForServer(url) {
   for (let i = 0; i < 60; i += 1) {
     try {
@@ -308,6 +325,25 @@ try {
   assert.equal(selected.includes(removed), false, 'la selección ya no contiene la pieza quitada');
   assert.equal(selected.length, 4);
 
+  await ev.locator('[data-piece-evidence]').first().uncheck();
+  const hiddenPiece = await ev.evaluate(() => {
+    const lib = JSON.parse(localStorage.getItem('pandora.biblioteca.v1'));
+    const active = lib.quotes.find((entry) => entry.id === lib.activeId);
+    return active.quote.blocks[0].videos[0].visible;
+  });
+  assert.equal(hiddenPiece, false, 'la pieza queda marcada como oculta');
+  assert.ok(await ev.locator('.is-evidence-off').count() > 0, 'la matriz marca la pieza oculta');
+
+  await ev.locator('[data-service-evidence]').first().uncheck();
+  assert.equal(await ev.locator('[data-piece-evidence]').first().isDisabled(), true, 'el servicio apaga sus piezas');
+  const hiddenService = await ev.evaluate(() => {
+    const lib = JSON.parse(localStorage.getItem('pandora.biblioteca.v1'));
+    const active = lib.quotes.find((entry) => entry.id === lib.activeId);
+    return active.quote.blocks[0].showEvidence;
+  });
+  assert.equal(hiddenService, false, 'el servicio queda marcado como oculto');
+  await ev.locator('[data-service-evidence]').first().check();
+
   assert.deepEqual(evErrors, [], `errores en evidencias:\n${evErrors.join('\n')}`);
   await evContext.close();
   console.log('E2E evidencias: OK');
@@ -434,6 +470,13 @@ try {
   MODES.forEach(writeClientPage);
   writeHiddenPage();
   writeLogoOnlyPage();
+  writeEvidenceVariant('_e2e-hidden-evidence', (quote) => {
+    quote.blocks[0].videos[0].visible = false;
+    quote.blocks[0].images[0].visible = false;
+  });
+  writeEvidenceVariant('_e2e-service-off', (quote) => {
+    quote.blocks[0].showEvidence = false;
+  });
   await waitForServer(`${serverUrl}/c/_e2e-service/`);
 
   const clientContext = await browser.newContext();
@@ -504,6 +547,36 @@ try {
   assert.deepEqual(layout.general, { service: 0, general: 1, navEvidence: true, navGeneral: false }, 'modo general');
   assert.deepEqual(layout.both, { service: 1, general: 1, navEvidence: false, navGeneral: false }, 'modo ambas');
   assert.deepEqual(layout.none, { service: 0, general: 0, navEvidence: true, navGeneral: true }, 'modo ocultar');
+
+  /* ---------- evidencia oculta por pieza o por servicio ---------- */
+  await page.goto(`${serverUrl}/c/_e2e-hidden-evidence/`);
+  await page.waitForSelector('body.ready');
+  const hiddenEvidence = await page.evaluate(() => ({
+    videos: document.querySelectorAll('[data-video]').length,
+    stills: document.querySelectorAll('.still').length,
+    nav: !document.querySelector('[data-nav][href="#evidencia"]').hidden,
+    marked: document.querySelectorAll('.is-evidence-off, .piece-off-tag').length
+  }));
+  assert.equal(hiddenEvidence.videos, P.catalog.metaads.videos.length - 1, 'el video oculto no se publica');
+  assert.equal(hiddenEvidence.stills, P.catalog.metaads.images.length - 1, 'la imagen oculta no se publica');
+  assert.equal(hiddenEvidence.nav, true, 'el servicio sigue mostrando evidencia');
+  assert.equal(hiddenEvidence.marked, 0, 'las marcas del editor no llegan al cliente');
+  assert.equal(await page.getByText(HIDDEN_VIDEO, { exact: true }).count(), 0, 'el título del video oculto no aparece');
+  assert.equal(await page.getByText(HIDDEN_IMAGE, { exact: true }).count(), 0, 'el título de la imagen oculta no aparece');
+
+  await page.goto(`${serverUrl}/c/_e2e-service-off/`);
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.locator('.section-work').count(), 0, 'un servicio sin evidencia no muestra sección');
+  assert.equal(
+    await page.locator('[data-nav][href="#evidencia"]').isHidden(),
+    true,
+    'sin evidencia de servicio la navegación no enlaza a ella'
+  );
+  assert.equal(
+    await page.evaluate(() => JSON.stringify(window.__PANDORA__).includes('assets/media/metaads')),
+    false,
+    'los medios del servicio apagado no viajan en el paquete'
+  );
 
   /* ---------- oculta para el cliente ---------- */
   await page.goto(`${serverUrl}/c/_e2e-hidden/`);
@@ -686,6 +759,8 @@ try {
   await browser.close();
   server.kill();
   MODES.forEach((mode) => rmSync(path.join(root, 'docs/c', `_e2e-${mode}`), { recursive: true, force: true }));
-  rmSync(path.join(root, 'docs/c/_e2e-logo-only'), { recursive: true, force: true });
+  ['_e2e-logo-only', '_e2e-hidden-evidence', '_e2e-service-off'].forEach((slug) =>
+    rmSync(path.join(root, 'docs/c', slug), { recursive: true, force: true })
+  );
   rmSync(path.join(root, 'tests/tmp'), { recursive: true, force: true });
 }

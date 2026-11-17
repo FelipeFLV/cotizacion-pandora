@@ -148,8 +148,10 @@
 
     out.blocks = (out.blocks || []).map((block) => {
       const copy = Object.assign({}, block);
-      copy.videos = keepService ? clone(block.videos || []) : [];
-      copy.images = keepService ? clone(block.images || []) : [];
+      const visible = (piece) => piece && piece.visible !== false;
+      const keepBlock = keepService && copy.showEvidence !== false;
+      copy.videos = keepBlock ? clone(block.videos || []).filter(visible) : [];
+      copy.images = keepBlock ? clone(block.images || []).filter(visible) : [];
       return copy;
     });
 

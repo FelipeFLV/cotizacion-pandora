@@ -471,6 +471,30 @@
       </div>`;
     }).join('');
 
+    $('#serviceEvidence').innerHTML = quote.blocks.map((block, bi) => {
+      const on = block.showEvidence !== false;
+      const rows = [];
+      ['videos', 'images'].forEach((kind) => {
+        (block[kind] || []).forEach((piece, index) => {
+          rows.push(`<label class="check-row piece-check${on ? '' : ' is-off'}">
+            <input type="checkbox" data-piece-evidence data-block="${bi}" data-kind="${kind}" data-index="${index}"
+                   ${piece.visible === false ? '' : 'checked'}${on ? '' : ' disabled'}>
+            <span>${esc(piece.title || (kind === 'videos' ? 'Video' : 'Imagen'))}</span>
+            <span class="piece-kind">${kind === 'videos' ? 'Video' : 'Imagen'}</span>
+          </label>`);
+        });
+      });
+      return `<article class="evidence-service${on ? '' : ' is-off'}">
+        <label class="check-row service-check">
+          <input type="checkbox" data-service-evidence data-block="${bi}"${on ? ' checked' : ''}>
+          <span>${esc(block.serviceName || block.title || 'Servicio')}${on ? '' : ' · Oculto'}</span>
+        </label>
+        <div class="evidence-pieces">
+          ${rows.length ? rows.join('') : '<span class="muted">Sin piezas cargadas.</span>'}
+        </div>
+      </article>`;
+    }).join('');
+
     $$('[data-mode]').forEach((btn) => {
       btn.setAttribute('aria-pressed', String(btn.dataset.mode === ev.mode));
     });
@@ -612,7 +636,7 @@
 
   /* ---------- publicación ---------- */
 
-  const MODE_LABEL = { service: 'Servicio', general: 'General', both: 'Ambas', none: 'Ocultar' };
+  const MODE_LABEL = { service: 'Servicio', general: 'General', both: 'Ambas', none: 'Sin evidencia' };
   let publishFallback = false;
   let publishMode = 'service';
   const MEDIA_REASON = {
@@ -1080,6 +1104,30 @@
     }, true);
 
     document.addEventListener('change', (event) => {
+      const serviceBox = event.target.closest('[data-service-evidence]');
+      if (serviceBox) {
+        const block = quote.blocks[Number(serviceBox.dataset.block)];
+        if (block) {
+          block.showEvidence = serviceBox.checked;
+          saveNow();
+          refresh();
+          renderEvidence();
+        }
+        return;
+      }
+      const pieceBox = event.target.closest('[data-piece-evidence]');
+      if (pieceBox) {
+        const block = quote.blocks[Number(pieceBox.dataset.block)];
+        const list = block && block[pieceBox.dataset.kind];
+        const piece = list && list[Number(pieceBox.dataset.index)];
+        if (piece) {
+          piece.visible = pieceBox.checked;
+          saveNow();
+          refresh();
+          renderEvidence();
+        }
+        return;
+      }
       const box = event.target.closest('[data-evidence-kind]');
       if (box) {
         ensureEvidence();
