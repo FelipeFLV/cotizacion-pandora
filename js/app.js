@@ -60,8 +60,16 @@
   function refresh() {
     P.render.all(quote, renderOptions());
     applyEditMode();
+    syncMetaControls();
     observeSections();
     updateEvidenceBadge();
+  }
+
+  function syncMetaControls() {
+    $$('[data-meta-select]').forEach((select) => {
+      const value = get(quote, select.dataset.metaSelect);
+      select.value = value || select.options[0].value;
+    });
   }
 
   function refreshPrices() {
@@ -1104,6 +1112,13 @@
     }, true);
 
     document.addEventListener('change', (event) => {
+      const metaSelect = event.target.closest('[data-meta-select]');
+      if (metaSelect) {
+        set(quote, metaSelect.dataset.metaSelect, metaSelect.value);
+        saveNow();
+        refresh();
+        return;
+      }
       const serviceBox = event.target.closest('[data-service-evidence]');
       if (serviceBox) {
         const block = quote.blocks[Number(serviceBox.dataset.block)];
@@ -1204,6 +1219,7 @@
     quote = store.load();
     updateLibraryCount();
     P.render.all(quote, renderOptions());
+    syncMetaControls();
     renderEvidence();
     bind();
     applyEditMode();

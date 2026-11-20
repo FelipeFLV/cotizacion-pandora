@@ -74,5 +74,18 @@
     </label>`;
   }
 
-  PADMIN.form = { esc, text, date, number, money, textarea, list, check };
+  function select({ path, label, value, options, hint: note }) {
+    const current = String(value == null ? '' : value);
+    const items = (options || []).map((option) => {
+      const selected = String(option.value) === current ? ' selected' : '';
+      return `<option value="${esc(option.value)}"${selected}>${esc(option.label)}</option>`;
+    }).join('');
+    return `<label class="field" for="f-${labelFor(path)}">
+      <span>${esc(label)}</span>
+      <select id="f-${labelFor(path)}" data-field="${esc(path)}">${items}</select>
+      ${hint(note)}
+    </label>`;
+  }
+
+  PADMIN.form = { esc, text, date, number, money, textarea, list, check, select };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -39,6 +39,8 @@
         validity: '30 días',
         taxEnabled: true,
         taxRate: 18,
+        currency: 'PEN',
+        investmentType: 'total',
         payments: [
           { label: 'Al dar inicio al servicio', pct: 60 },
           { label: 'Al mes siguiente', pct: 40 }
@@ -52,7 +54,7 @@
         retireRequestedAt: '',
         conditions: [
           'La proforma tiene una vigencia de 30 días desde la fecha de emisión.',
-          'Los precios están expresados en soles peruanos y no incluyen I.G.V. salvo indicación contraria.',
+          'Los precios están expresados en la moneda indicada en la propuesta y no incluyen I.G.V. salvo indicación contraria.',
           'La inversión publicitaria se factura por adelantado y se ejecuta según el plan aprobado.',
           'Cualquier cambio de alcance se cotiza por separado antes de su ejecución.'
         ]

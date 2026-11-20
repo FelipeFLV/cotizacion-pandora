@@ -85,7 +85,7 @@ export const TEMPLATE = `<!DOCTYPE html>
 
       <aside class="docket" aria-label="Resumen de inversión">
         <div class="docket-head">
-          <span class="docket-label">Inversión total</span>
+          <span class="docket-label" data-summary="investmentLabel">Inversión total</span>
           <p class="docket-total"><span data-total="grand"></span></p>
           <p class="docket-note" data-summary="taxNote"></p>
         </div>

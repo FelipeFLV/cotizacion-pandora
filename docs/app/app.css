@@ -1046,6 +1046,35 @@ body.is-paused .topbar-actions { display: none; }
 
 body:not(.is-editing) .edit-only { display: none !important; }
 
+.invest-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: -8px 0 22px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  background: rgba(70, 0, 187, .03);
+}
+.invest-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.invest-settings select {
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--white);
+  padding: 6px 8px;
+}
+
 body.is-editing .editable {
   cursor: text;
   border-radius: 2px;

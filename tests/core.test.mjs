@@ -16,6 +16,26 @@ test('money and totals', () => {
   );
 });
 
+test('currency and investment default to soles and total', () => {
+  assert.equal(P.currencyCode({ meta: {} }), 'PEN');
+  assert.equal(P.currencySymbol({ meta: {} }), 'S/');
+  assert.equal(P.currencyName({ meta: {} }), 'soles');
+  assert.equal(P.moneyIn(1250, { meta: {} }), 'S/ 1,250.00');
+  assert.equal(P.investmentType({ meta: {} }), 'total');
+  assert.equal(P.investmentLabel({ meta: {} }), 'Inversión total');
+});
+
+test('dollars use their own symbol across formats', () => {
+  const usd = { meta: { currency: 'USD' } };
+  assert.equal(P.currencyCode(usd), 'USD');
+  assert.equal(P.currencySymbol(usd), '$');
+  assert.equal(P.currencyName(usd), 'dólares');
+  assert.equal(P.moneyIn(1250, usd), '$ 1,250.00');
+  assert.equal(P.currencySymbol('USD'), '$', 'acepta el código suelto');
+  assert.equal(P.investmentLabel({ meta: { investmentType: 'monthly' } }), 'Inversión mensual');
+  assert.equal(P.currencySymbol({ meta: { currency: 'EUR' } }), 'S/', 'una moneda desconocida cae a soles');
+});
+
 test('slugify and uniqueSlug', () => {
   assert.equal(P.slugify('H&S Inmobiliaria'), 'h-s-inmobiliaria');
   assert.equal(P.slugify('Ñandú  Soluciones'), 'nandu-soluciones');

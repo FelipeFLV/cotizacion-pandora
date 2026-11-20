@@ -34,7 +34,7 @@
   }
 
   function money(value) {
-    return F.esc(root.P.moneyS(value));
+    return F.esc(root.P.moneyIn(value, current));
   }
 
   function section(id, title, body, extra) {
@@ -103,6 +103,8 @@
 
   function clientSection() {
     const meta = current.meta || {};
+    const currency = meta.currency || 'PEN';
+    const investmentType = meta.investmentType === 'monthly' ? 'monthly' : 'total';
     return section('cliente', 'Cliente', `<div class="grid-2">
       ${F.text({ path: 'meta.client', label: 'Cliente', value: String(meta.client || '').replace(/\u200B/g, ''), hint: 'Opcional en la propuesta si subes el logo. Obligatorio para el PDF Proforma.' })}
       ${F.text({ path: 'meta.quoteNo', label: 'N.º de cotización', value: meta.quoteNo })}
@@ -110,6 +112,14 @@
       ${F.text({ path: 'meta.duration', label: 'Duración', value: meta.duration })}
       ${F.text({ path: 'meta.validity', label: 'Vigencia', value: meta.validity })}
       ${F.text({ path: 'meta.taxRate', label: 'IGV (%)', value: meta.taxRate, type: 'number' })}
+      ${F.select({ path: 'meta.currency', label: 'Moneda', value: currency, options: [
+        { value: 'PEN', label: 'Soles (S/)' },
+        { value: 'USD', label: 'Dólares ($)' }
+      ] })}
+      ${F.select({ path: 'meta.investmentType', label: 'Tipo de inversión', value: investmentType, options: [
+        { value: 'total', label: 'Inversión total' },
+        { value: 'monthly', label: 'Inversión mensual' }
+      ] })}
       ${F.textarea({ path: 'meta.lede', label: 'Entradilla', value: meta.lede, rows: 3 })}
       ${F.textarea({ path: 'meta.closing', label: 'Cierre', value: meta.closing, rows: 3 })}
       ${F.check({ path: 'meta.taxEnabled', label: 'Aplicar IGV', checked: meta.taxEnabled })}
@@ -121,7 +131,7 @@
     const base = `blocks.${index}`;
     const lines = (block.items || []).map((item, itemIndex) => `<tr>
       <td><input data-field="${base}.items.${itemIndex}.label" value="${esc(item.label)}" aria-label="Concepto"></td>
-      <td class="cell-money"><span class="money-wrap"><em>S/</em><input data-field="${base}.items.${itemIndex}.amount" type="number" step="0.01" min="0" value="${esc(item.amount)}" aria-label="Monto"></span></td>
+      <td class="cell-money"><span class="money-wrap"><em>${esc(root.P.currencySymbol(current))}</em><input data-field="${base}.items.${itemIndex}.amount" type="number" step="0.01" min="0" value="${esc(item.amount)}" aria-label="Monto"></span></td>
       <td class="cell-tools"><button class="mini" data-op="item-del" data-index="${index}" data-item="${itemIndex}" type="button" aria-label="Quitar línea">×</button></td>
     </tr>`).join('');
 
@@ -287,7 +297,7 @@
     if (!host) return;
     const totals = M.totals(current);
     const totalNode = host.querySelector('[data-total]');
-    if (totalNode) totalNode.textContent = root.P.moneyS(totals.grand);
+    if (totalNode) totalNode.textContent = root.P.moneyIn(totals.grand, current);
     const payTotal = host.querySelector('[data-pay-total]');
     if (payTotal) {
       const total = M.paymentTotal(current);
@@ -340,6 +350,7 @@
     }
     updateComputed();
     if (onChange) onChange(current);
+    if (field.dataset.field === 'meta.currency' || field.dataset.field === 'meta.investmentType') render();
     scheduleSave();
   }
 

@@ -100,7 +100,7 @@
 
       <aside class="docket" aria-label="Resumen de inversión">
         <div class="docket-head">
-          <span class="docket-label">Inversión total</span>
+          <span class="docket-label" data-text="summary.investmentLabel">Inversión total</span>
           <p class="docket-total"><span data-total="grand"></span></p>
           <p class="docket-note" data-text="summary.taxNote"></p>
         </div>
@@ -156,6 +156,21 @@
       <span class="head-rule" aria-hidden="true"></span>
       <span class="head-note" data-text="summary.taxNoteShort"></span>
     </header>
+
+    <div class="edit-only invest-settings">
+      <label>Moneda
+        <select data-meta-select="meta.currency">
+          <option value="PEN">Soles (S/)</option>
+          <option value="USD">Dólares ($)</option>
+        </select>
+      </label>
+      <label>Tipo de inversión
+        <select data-meta-select="meta.investmentType">
+          <option value="total">Inversión total</option>
+          <option value="monthly">Inversión mensual</option>
+        </select>
+      </label>
+    </div>
 
     <div class="invest-grid">
       <div class="price-sheet">

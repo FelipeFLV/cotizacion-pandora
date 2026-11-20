@@ -18,6 +18,7 @@ Panel de escritorio (no está pensado para móvil): <https://felipeflv.github.io
 - **Acceso**: un único correo autorizado (`felipeflores1986@gmail.com`) entra con enlace mágico. Si el enlace abre otra pestaña, pégalo en la misma: la sesión queda guardada en ese navegador.
 - **Dónde vive el trabajo**: Supabase (Postgres + storage privado). Desde otra computadora se ve la misma biblioteca; sin sesión, la API y el bucket no devuelven nada.
 - **Borradores y medios**: hasta que publicas, el JSON y las imágenes viven en el bucket privado `drafts`. Solo lo aprobado se escribe en el repo público.
+- **Moneda e inversión**: en **Cliente** eliges soles (S/) o dólares ($) y si la propuesta habla de inversión total o mensual. El símbolo y la etiqueta se aplican a la propuesta publicada, al PDF A4 y a la Proforma. Las cotizaciones antiguas sin estos campos se leen como soles e inversión total.
 - **Publicar**: abre la cotización → **Publicación → Publicar**. La función Edge hace un commit atómico en GitHub Pages y devuelve la URL. La primera publicación fija el slug; republicar **conserva la misma URL**.
 - **Retirar**: borra la página y sus imágenes del repo (la URL pasa a 404) y conserva la cotización, su slug y su historial en el panel.
 - **Historial**: queda una versión en cada publicación y en cada captura manual; se puede restaurar, y antes de restaurar se guarda «Antes de restaurar».

@@ -42,12 +42,50 @@
     return { subtotal, igv, grand: subtotal + igv, rate };
   }
 
+  const CURRENCIES = {
+    PEN: { symbol: 'S/', name: 'soles' },
+    USD: { symbol: '$', name: 'dólares' }
+  };
+
+  function currencyCode(quote) {
+    const meta = (quote && quote.meta) || {};
+    const code = String(meta.currency || 'PEN').toUpperCase();
+    return CURRENCIES[code] ? code : 'PEN';
+  }
+
+  function currencySymbol(quoteOrCode) {
+    const code = typeof quoteOrCode === 'string'
+      ? currencyCode({ meta: { currency: quoteOrCode } })
+      : currencyCode(quoteOrCode);
+    return CURRENCIES[code].symbol;
+  }
+
+  function currencyName(quoteOrCode) {
+    const code = typeof quoteOrCode === 'string'
+      ? currencyCode({ meta: { currency: quoteOrCode } })
+      : currencyCode(quoteOrCode);
+    return CURRENCIES[code].name;
+  }
+
+  function investmentType(quote) {
+    const meta = (quote && quote.meta) || {};
+    return meta.investmentType === 'monthly' ? 'monthly' : 'total';
+  }
+
+  function investmentLabel(quote) {
+    return investmentType(quote) === 'monthly' ? 'Inversión mensual' : 'Inversión total';
+  }
+
   function money(value) {
     return nf.format(Number(value) || 0);
   }
 
   function moneyS(value) {
     return 'S/ ' + money(value);
+  }
+
+  function moneyIn(value, quoteOrCode) {
+    return currencySymbol(quoteOrCode) + ' ' + money(value);
   }
 
   function parseNumber(input) {
@@ -222,6 +260,12 @@
     totals,
     money,
     moneyS,
+    moneyIn,
+    currencyCode,
+    currencySymbol,
+    currencyName,
+    investmentType,
+    investmentLabel,
     parseNumber,
     dateLabel,
     shortDate,

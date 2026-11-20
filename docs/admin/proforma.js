@@ -27,10 +27,10 @@
     host.appendChild(section);
   }
 
-  function formatAmount(value) {
+  function formatAmount(value, currency) {
     const amount = Number(value) || 0;
     const decimals = Number.isInteger(amount) ? 0 : 2;
-    return `S/${new Intl.NumberFormat('es-PE', {
+    return `${root.P.currencySymbol(currency)}${new Intl.NumberFormat('es-PE', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: 2
     }).format(amount)}`;
@@ -77,10 +77,11 @@
 
     const subtotal = blocks.reduce((sum, block) => sum + serviceSubtotal(block), 0);
     const taxNote = meta.taxEnabled ? 'más I.G.V.' : 'I.G.V. no aplicado';
+    const investmentKind = meta.investmentType === 'monthly' ? 'Inversión Mensual' : 'Inversión Total';
     doc.getElementById('investment-label').textContent = blocks.length > 1
-      ? 'Inversión Total por los servicios:'
-      : 'Inversión Total por el servicio:';
-    doc.getElementById('investment-total').textContent = `${formatAmount(subtotal)} ${taxNote}`;
+      ? `${investmentKind} por los servicios:`
+      : `${investmentKind} por el servicio:`;
+    doc.getElementById('investment-total').textContent = `${formatAmount(subtotal, meta.currency)} ${taxNote}`;
 
     const bank = quote.bank || {};
     const lines = [];

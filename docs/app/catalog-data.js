@@ -340,7 +340,7 @@
       deliverables: [
         '12 creativos para anuncios durante los 3 meses del servicio, entre imágenes y video',
         'Gestión de anuncios publicitarios en Meta Ads',
-        'Presupuesto de inversión de S/ 2,500 incluido en la cotización',
+        'Presupuesto de inversión para anuncios incluido en la cotización',
         '01 sesión de fotografía y/o video de 2 h para contenido de anuncios',
         'Supervisión de contenido y monitoreo de campañas publicitarias',
         'Revisión de tendencias y novedades'

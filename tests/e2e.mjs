@@ -143,6 +143,20 @@ try {
   await matrix.waitForSelector('body.ready');
   const saved = (await matrix.locator('[data-text="meta.client"]').first().innerText()).trim();
   assert.equal(saved, 'Cliente Prueba', 'el nombre editado debe persistir tras recargar');
+
+  await matrix.locator('[data-action="toggle-edit"]').click();
+  await matrix.locator('[data-meta-select="meta.currency"]').selectOption('USD');
+  await matrix.locator('[data-meta-select="meta.investmentType"]').selectOption('monthly');
+  await matrix.waitForTimeout(100);
+  assert.match(await matrix.locator('.docket-total').first().innerText(), /^\$ /, 'el total debe llevar símbolo de dólares');
+  assert.equal((await matrix.locator('.docket-label').first().innerText()).trim(), 'Inversión mensual');
+  assert.match(await matrix.locator('[data-text="summary.taxNoteShort"]').first().innerText(), /dólares/, 'la nota debe hablar de dólares');
+
+  await matrix.reload();
+  await matrix.waitForSelector('body.ready');
+  assert.equal(await matrix.locator('[data-meta-select="meta.currency"]').inputValue(), 'USD', 'la moneda debe persistir');
+  assert.equal(await matrix.locator('[data-meta-select="meta.investmentType"]').inputValue(), 'monthly', 'el tipo de inversión debe persistir');
+
   assert.deepEqual(matrixErrors, [], `errores en la matriz:\n${matrixErrors.join('\n')}`);
   await matrixContext.close();
   console.log('E2E matriz: OK');

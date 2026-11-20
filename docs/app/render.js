@@ -333,13 +333,14 @@
     const host = document.getElementById('price-groups');
     if (!host) return;
     const multi = quote.blocks.length > 1;
+    const symbol = P.currencySymbol(quote);
 
     host.innerHTML = quote.blocks.map((block, bi) => {
       const sum = (block.items || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
       return `<div class="price-group">
         <div class="price-group-head">
           <h3>${esc(block.serviceName || (P.catalog && P.catalog[block.serviceId] ? P.catalog[block.serviceId].name : block.title))}</h3>
-          ${multi ? `<span class="group-sum">S/ ${P.money(sum)}</span>` : ''}
+          ${multi ? `<span class="group-sum">${symbol} ${P.money(sum)}</span>` : ''}
         </div>
         <div class="price-rows">
           ${(block.items || []).map((item, ii) => `
@@ -347,7 +348,7 @@
               ${txt(`blocks.${bi}.items.${ii}.label`, item.label, 'price-name')}
               <span class="leader" aria-hidden="true"></span>
               <span class="price-amt">
-                <span class="cur">S/</span>
+                <span class="cur">${symbol}</span>
                 ${isRO()
                   ? `<span class="amt-txt">${P.money(item.amount)}</span>`
                   : `<input class="amt" type="text" inputmode="decimal" spellcheck="false"
@@ -391,7 +392,7 @@
                      value="${pct}" aria-label="Porcentaje del pago">%`}
         </span>
         <span class="pay-label">${txt(`meta.payments.${i}.label`, payment.label)}</span>
-        <span class="pay-amt">S/ ${P.money(total * pct / 100)}</span>
+        <span class="pay-amt">${P.moneyIn(total * pct / 100, quote)}</span>
       </li>`;
     }).join('');
   }
@@ -457,6 +458,7 @@
       .join(' + ');
     const payments = quote.meta.payments || [];
     const split = payments.map((payment) => `${Number(payment.pct) || 0}% ${String(payment.label).toLowerCase()}`).join(' · ');
+    const currency = P.currencyName(quote);
     return {
       'summary.services': services,
       'summary.igvPct': quote.meta.taxEnabled ? `(${quote.meta.taxRate}%)` : '',
@@ -464,10 +466,11 @@
         ? `Incluye I.G.V. (${quote.meta.taxRate}%)`
         : 'No incluye I.G.V.',
       'summary.taxNoteShort': quote.meta.taxEnabled
-        ? `Precios en soles · I.G.V. ${quote.meta.taxRate}% incluido`
-        : 'Precios en soles · I.G.V. no incluido',
+        ? `Precios en ${currency} · I.G.V. ${quote.meta.taxRate}% incluido`
+        : `Precios en ${currency} · I.G.V. no incluido`,
+      'summary.investmentLabel': P.investmentLabel(quote),
       'summary.split': split,
-      'summary.grand': P.moneyS(t.grand)
+      'summary.grand': P.moneyIn(t.grand, quote)
     };
   }
 
@@ -549,7 +552,7 @@
     document.querySelectorAll('[data-total]').forEach((el) => {
       const key = el.dataset.total;
       const value = key === 'grand' ? t.grand : key === 'subtotal' ? t.subtotal : t.igv;
-      el.textContent = P.moneyS(value);
+      el.textContent = P.moneyIn(value, quote);
     });
 
     document.querySelectorAll('[data-igv-row]').forEach((el) => {
@@ -560,7 +563,7 @@
       const block = quote.blocks[Number(el.dataset.blockTotal)];
       if (!block) return;
       const sum = (block.items || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-      el.textContent = P.moneyS(sum);
+      el.textContent = P.moneyIn(sum, quote);
     });
 
     document.querySelectorAll('[data-tax-suffix]').forEach((el) => {
