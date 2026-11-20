@@ -87,7 +87,7 @@ body {
 .bank-details { margin-top: 12mm; break-inside: avoid; }
 .bank-line { margin: 0 0 1mm; }
 
-.validity { margin: 107mm 0 0; text-align: right; break-inside: avoid; }
+.validity { margin-top: auto; margin-bottom: 0; text-align: right; break-inside: avoid; }
 
 .document-foot {
   position: relative;
@@ -137,18 +137,24 @@ body {
   .proforma { padding-bottom: 0; }
   .page--main, .page--totals { display: flex; flex-direction: column; min-height: 282mm; }
   .page--totals { margin-top: 8mm; }
+  .page--totals .validity { margin-bottom: 5mm; }
   .document-foot--flow { margin-top: auto; }
 }
 
 @media print {
   html, body { width: auto; min-height: 0; margin: 0; }
   body { padding: 0; box-shadow: none; }
-  .page--main, .page--totals { display: block; min-height: 0; }
+  .page--main { display: block; min-height: 0; }
   .page::before { display: none; }
   .page--totals {
+    display: flex;
+    flex-direction: column;
+    min-height: 256mm;
+    box-sizing: border-box;
     margin-top: 0;
     padding-top: 33.5mm;
     break-before: page;
+    break-inside: avoid;
   }
   .document-head--secondary { display: none; }
   .brand { visibility: hidden; }
